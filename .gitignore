@@ -62,3 +62,6 @@ typings/
 
 # local vscode configurations
 .vscode
+
+# TS build dirs
+build/
