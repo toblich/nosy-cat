@@ -1,4 +1,4 @@
-import express = require("express");
+import * as express from "express";
 import { ping } from "./kafka-integration";
 
 const app: express.Application = express();
