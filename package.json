@@ -4,13 +4,11 @@
   "description": "Anomaly & root-cause detection on distributed systems",
   "devDependencies": {
     "husky": "^3.0.0",
+    "lint-staged": "^9.2.0",
     "prettier": "^1.18.2",
-    "pretty-quick": "^1.11.1"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "pretty-quick --staged"
-    }
+    "pretty-quick": "^1.11.1",
+    "tslint": "^5.18.0",
+    "tslint-config-prettier": "^1.18.0"
   },
   "repository": {
     "type": "git",
@@ -24,5 +22,20 @@
   "bugs": {
     "url": "https://github.com/toblich/nosy-cat/issues"
   },
-  "homepage": "https://github.com/toblich/nosy-cat#readme"
+  "homepage": "https://github.com/toblich/nosy-cat#readme",
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,ts,json,css,md}": [
+      "pretty-quick --staged",
+      "git add"
+    ],
+    "*.{ts, js}": [
+      "tslint -c ./tslint.json --fix",
+      "git add"
+    ]
+  }
 }
