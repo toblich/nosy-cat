@@ -1,5 +1,5 @@
 import { ProduceRequest } from "kafka-node";
-import { sendAsync, createTopicsAsync } from "@helpers/promisifed-kafka";
+import { sendAsync } from "@helpers/promisifed-kafka";
 
 const ping = async () => {
   const payloads: ProduceRequest[] = [{ topic: "test", messages: ["test message"] }];
