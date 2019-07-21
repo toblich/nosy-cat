@@ -1,18 +1,25 @@
-import { sendAsync } from "helpers";
+import { sendAsync, producer } from "helpers";
 import { ProduceRequest } from "kafka-node";
 
-const ping = async () => {
+const ping = () => {
   const payloads: ProduceRequest[] = [{ topic: "test", messages: ["test message"] }];
 
-  try {
-    const data = await sendAsync(payloads);
+  producer.on("ready", async () => {
+    try {
+      const data = await sendAsync(payloads);
 
+      // tslint:disable-next-line:no-console
+      console.log("data", data);
+    } catch (error) {
+      // tslint:disable-next-line:no-console
+      console.error("error", error);
+    }
+  });
+
+  producer.on("error", error => {
     // tslint:disable-next-line:no-console
-    console.log("data", data);
-  } catch (error) {
-    // tslint:disable-next-line:no-console
-    console.error("error", error);
-  }
+    console.error("producer error", error);
+  });
 };
 
 export { ping };
