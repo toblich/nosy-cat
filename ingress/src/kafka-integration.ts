@@ -1,4 +1,4 @@
-import { sendAsync } from "@helpers/kafka";
+import { sendAsync } from "helpers";
 import { ProduceRequest } from "kafka-node";
 
 const ping = async () => {

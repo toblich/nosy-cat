@@ -1,12 +1,14 @@
 import * as express from "express";
+import { logger } from "helpers";
 import { ping } from "./kafka-integration";
 
 const app: express.Application = express();
+
+logger.info("Starting ingress app...");
 
 app.get("/ping", (req, res) => {
   ping();
   res.send("pong");
 });
 
-// tslint:disable-next-line: no-console
-app.listen(3000, () => console.log("Listening on port 3000"));
+app.listen(3000, () => logger.info("Ingress listening on port 3000"));
