@@ -19,4 +19,13 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
 
-
+  producer:
+    image: taion809/kafka-cli:2.2.0
+    command: kafka-console-producer.sh --broker-list kafka:9093 --topic test
+    links:
+      - kafka
+  consumer:
+    image: taion809/kafka-cli:2.2.0
+    command: kafka-console-consumer.sh --bootstrap-server kafka:9093 --topic test --from-beginning
+    links:
+      - kafka
