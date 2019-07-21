@@ -4,7 +4,7 @@
   "description": "Service that detects anomalies on components",
   "main": "src/app.ts",
   "scripts": {
-    "start": "nodemon --config ../nodemon.json --watch 'src/**/*.ts' --exec 'ts-node' .",
+    "start": "nodemon --config ../nodemon.json --exec 'ts-node' .",
     "build": "tsc -p .",
     "start:prod": "node ./build/app.js"
   },
@@ -19,6 +19,6 @@
   },
   "dependencies": {
     "express": "^4.17.1",
-    "@helpers/kafka": "file:../helpers"
+    "helpers": "file:../helpers"
   }
 }
