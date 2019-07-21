@@ -6,14 +6,18 @@
   "scripts": {
     "start": "nodemon --config ../nodemon.json --exec 'ts-node' .",
     "build": "tsc -p .",
-    "start:prod": "node ./build/app.js"
+    "start:prod": "node ./build/app.js",
+    "test": "jest --forceExit --coverage --verbose"
   },
   "author": "",
   "license": "BSD-3-Clause",
   "devDependencies": {
     "@types/express": "^4.17.0",
+    "@types/jest": "^24.0.15",
     "@types/kafka-node": "^2.0.8",
+    "jest": "^24.8.0",
     "nodemon": "^1.19.1",
+    "ts-jest": "^24.0.2",
     "ts-node": "^8.3.0",
     "typescript": "^3.5.3"
   },
