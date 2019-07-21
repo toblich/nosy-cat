@@ -1,11 +1,20 @@
 import * as kafka from "kafka-node";
+import { promisify } from "util";
 import * as bluebird from "bluebird";
+import { logger } from "./logger";
 
-const Producer = kafka.Producer;
 const client = new kafka.KafkaClient({ kafkaHost: "localhost:9092" });
-const producer = new Producer(client, { requireAcks: 1 });
+const producer = new kafka.Producer(client, { requireAcks: 1 });
 
-const sendAsync = bluebird.promisify(producer.send);
+client.on("ready", () => {
+  logger.info("client ready");
+});
+
+client.on("error", err => {
+  logger.error("client error: " + err);
+});
+
+const sendAsync = bluebird.promisify(producer.send, { context: producer });
 const createTopicsAsync = bluebird.promisify(client.createTopics);
 
 export { sendAsync, createTopicsAsync, producer };
