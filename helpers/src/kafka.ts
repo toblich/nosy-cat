@@ -1,5 +1,4 @@
 import * as kafka from "kafka-node";
-import { promisify } from "util";
 import * as bluebird from "bluebird";
 import { logger } from "./logger";
 
