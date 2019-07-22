@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Enable bash 'strict mode' (http://redsymbol.net/articles/unofficial-bash-strict-mode/)
+set -euo pipefail
+IFS=$'\n\t'
+
+PROJECTS=(helpers ingress dependency-detector) # TODO: anomaly-detector root-cause-detector
+
+COMMAND="$@"
+
+DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECTS_ROOT="$DIR/../.."
+
+COLOR='\033[1;34m'
+NC='\033[0m'
+
+for PROJECT in "${PROJECTS[@]}"; do
+  cd $PROJECTS_ROOT/$PROJECT
+  echo
+  echo -e "${COLOR}---- Project: '${PROJECT}', Command: '${COMMAND}' ----${NC}"
+  eval $COMMAND
+  cd - > /dev/null
+done

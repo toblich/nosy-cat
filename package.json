@@ -11,6 +11,10 @@
     "tslint-config-prettier": "^1.18.0",
     "typescript": "^3.5.3"
   },
+  "scripts": {
+    "ci:install-all-projects": "./scripts/install-all-projects.sh",
+    "test": "./scripts/test-all-projects.sh"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/toblich/nosy-cat.git"
