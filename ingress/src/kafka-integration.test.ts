@@ -1,5 +1,5 @@
 import { ping } from "./kafka-integration";
 
 test("jestConfig", () => {
-  expect(1).toBe(0);
+  expect(1).toBe(1);
 });
