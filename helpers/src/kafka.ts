@@ -1,19 +1,26 @@
-import * as kafka from "kafka-node";
-import * as bluebird from "bluebird";
-import { logger } from "./logger";
+import * as Kafka from "kafkajs";
+import { Tracer } from "zipkin";
+import instrumentKafkaJs = require("zipkin-instrumentation-kafkajs");
 
-const client = new kafka.KafkaClient({ kafkaHost: "localhost:9092" });
-const producer = new kafka.Producer(client, { requireAcks: 1 });
+const kafka = (tracer: Tracer): Kafka.Kafka => {
+  return instrumentKafkaJs(
+    new Kafka.Kafka({
+      brokers: ["localhost:9092"]
+    }),
+    {
+      tracer,
+      remoteServiceName: "kafka"
+    }
+  );
+};
 
-client.on("ready", () => {
-  logger.info("client ready");
-});
+const kafkaWrapper = (tracer: Tracer) => {
+  const kafkaInstance = kafka(tracer);
 
-client.on("error", err => {
-  logger.error("client error: " + err);
-});
+  return {
+    producer: kafkaInstance.producer(),
+    consumer: kafkaInstance.consumer()
+  };
+};
 
-const sendAsync = bluebird.promisify(producer.send, { context: producer });
-const createTopicsAsync = bluebird.promisify(client.createTopics);
-
-export { sendAsync, createTopicsAsync, producer };
+export { kafkaWrapper };
