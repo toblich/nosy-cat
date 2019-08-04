@@ -26,6 +26,6 @@ services:
       - kafka
   consumer:
     image: taion809/kafka-cli:2.2.0
-    command: kafka-console-consumer.sh --bootstrap-server kafka:9093 --topic test --from-beginning
+    command: kafka-console-consumer.sh --bootstrap-server kafka:9093 --topic ingress --from-beginning
     links:
       - kafka
