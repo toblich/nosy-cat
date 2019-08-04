@@ -1,4 +1,4 @@
 export * from "./kafka";
 export * from "./logger";
-export * from "./expressZipkinFactory";
-export * from "./contextTracerFactory";
+export * from "./createZipkinExpress";
+export * from "./createZipkinContextTracer";

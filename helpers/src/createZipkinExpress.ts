@@ -3,7 +3,7 @@ import * as express from "express";
 import { Tracer } from "zipkin";
 import { expressMiddleware } from "zipkin-instrumentation-express";
 
-export default function expressFactory(tracer: Tracer) {
+export function createZipkinExpress(tracer: Tracer) {
   const app = express();
 
   // Add the Zipkin middleware
