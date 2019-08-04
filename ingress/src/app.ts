@@ -1,6 +1,6 @@
 import * as express from "express";
 import { logger, kafkaWrapper, createZipkinContextTracer, createZipkinExpress } from "helpers";
-import { ping } from "./kafka-integration";
+import { ping, spans } from "./kafka-integration";
 
 const contextTracer = createZipkinContextTracer("ingress");
 
@@ -18,6 +18,17 @@ const run = async () => {
   app.get("/ping", (req, res) => {
     ping(producer as any);
     res.send("pong");
+  });
+
+  app.post("/api/v2/spans", async (req, res) => {
+    const body = req.body;
+
+    try {
+      await spans(producer as any, body);
+      res.send();
+    } catch (error) {
+      res.status(error.status).send(error.message);
+    }
   });
 
   app.listen(3000, () => logger.info("Ingress listening on port 3000"));
