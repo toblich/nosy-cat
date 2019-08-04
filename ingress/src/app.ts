@@ -16,7 +16,7 @@ const run = async () => {
   const producer = kafka.producer;
 
   app.get("/ping", (req, res) => {
-    ping();
+    ping(producer as any);
     res.send("pong");
   });
 
