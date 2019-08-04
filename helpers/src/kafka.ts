@@ -14,12 +14,17 @@ const kafka = (tracer: Tracer): Kafka.Kafka => {
   );
 };
 
-const kafkaWrapper = (tracer: Tracer) => {
+const kafkaWrapper = async (tracer: Tracer) => {
   const kafkaInstance = kafka(tracer);
+  const producer = kafkaInstance.producer();
+  const consumer = kafkaInstance.consumer();
+
+  await producer.connect();
+  await consumer.connect();
 
   return {
-    producer: kafkaInstance.producer(),
-    consumer: kafkaInstance.consumer()
+    producer,
+    consumer
   };
 };
 
