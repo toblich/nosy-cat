@@ -5,6 +5,7 @@ import { expressMiddleware } from "zipkin-instrumentation-express";
 
 export function createZipkinExpress(tracer: Tracer) {
   const app = express();
+  app.use(express.json());
 
   // Add the Zipkin middleware
   app.use(expressMiddleware({ tracer }));
