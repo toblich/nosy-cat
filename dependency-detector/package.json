@@ -4,16 +4,20 @@
   "description": "Service that detects anomalies on components",
   "main": "src/app.ts",
   "scripts": {
-    "start": "nodemon --config ../nodemon.json --watch 'src/**/*.ts' --exec 'ts-node' .",
+    "start": "nodemon --config ../nodemon.json --exec 'ts-node' .",
     "build": "tsc -p .",
     "start:prod": "node ./build/app.js"
   },
   "author": "",
   "license": "BSD-3-Clause",
+  "dependencies": {
+    "helpers": "file:../helpers"
+  },
   "devDependencies": {
     "@types/node": "^12.6.2",
     "nodemon": "^1.19.1",
     "ts-node": "^8.3.0",
-    "typescript": "^3.5.3"
+    "typescript": "^3.5.3",
+    "zipkin": "^0.18.6"
   }
 }

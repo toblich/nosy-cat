@@ -1,3 +1,12 @@
-const ok: any = console;
+import { consume } from "./kafka-integration";
+import { logger, createZipkinContextTracer } from "helpers";
 
-ok.log("test");
+const { tracer } = createZipkinContextTracer("dependency-detector");
+
+consume(tracer, "ingress", onEveryMessage);
+
+// ---
+
+async function onEveryMessage({ partition, message }) {
+  logger.info(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
+}
