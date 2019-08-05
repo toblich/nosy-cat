@@ -3,7 +3,7 @@ import { logger, createZipkinContextTracer } from "helpers";
 
 const { tracer } = createZipkinContextTracer("dependency-detector");
 
-consume(tracer, "test", onEveryMessage);
+consume(tracer, "ingress", onEveryMessage);
 
 // ---
 
