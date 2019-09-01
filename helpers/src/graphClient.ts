@@ -10,7 +10,7 @@ class GraphClient {
   public postComponentCalls = (componentCalls: ComponentCall[]) => {
     const requestBody: GraphServiceRequestBody = { componentCalls };
 
-    return fetch(this.url, {
+    return fetch(`${this.url}/graph`, {
       method: "POST",
       body: JSON.stringify(requestBody)
     });
