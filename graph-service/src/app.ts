@@ -23,7 +23,7 @@ app.post("/graph", (req, res, next) => {
 });
 
 app.get("/graph", (req, res) => {
-  res.json(graph.toObject());
+  res.json(graph.toPlainObject());
 });
 
 app.listen(4000, () => logger.info("Graph listening on port 4000"));
