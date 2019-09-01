@@ -13,17 +13,6 @@ const app: express.Application = createZipkinExpress(tracer);
 const graph = new Graph();
 
 app.post("/graph", (req, res, next) => {
-  logger.info("body", req.body);
-  try {
-    add(req.body);
-  } catch (e) {
-    return next(e);
-  }
-
-  res.status(201).send();
-});
-
-app.post("/bulk/graph", (req, res, next) => {
   try {
     req.body.map(add);
   } catch (e) {
