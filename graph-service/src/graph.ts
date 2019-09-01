@@ -72,8 +72,8 @@ export class Graph {
     if (!this.graph.has(to)) {
       this.graph.set(to, new Component(to));
     }
-    if (!this.graph.get(from).dependencies.has(to)) {
-      this.graph.get(from).addDependency(to);
+    if (!this.hasDependency(from, to)) {
+      this.getComponent(from).addDependency(to);
     }
   }
 
