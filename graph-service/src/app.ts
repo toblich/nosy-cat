@@ -40,8 +40,11 @@ app.get("/graph", (req, res) => {
 app.listen(4000, () => logger.info("Graph listening on port 4000"));
 
 // --- Graph Service ---
-// tslint:disable-next-line: ban-types
-function add({ caller, callee }) {
+interface ComponentCall {
+  caller?: string;
+  callee?: string;
+}
+function add({ caller, callee }: ComponentCall) {
   if (caller && callee) {
     graph.addDependency(caller, callee);
   } else if (caller) {

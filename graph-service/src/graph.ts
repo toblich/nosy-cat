@@ -1,10 +1,10 @@
-type ComponentID = string;
+// tslint:disable: max-classes-per-file
 
 export class Graph {
-  private graph: Map<ComponentID, Set<ComponentID>>;
+  private graph: Map<string, Set<string>>;
 
   constructor() {
-    this.graph = new Map<ComponentID, Set<ComponentID>>();
+    this.graph = new Map<string, Set<string>>();
   }
 
   public toObject() {
@@ -19,14 +19,14 @@ export class Graph {
     return JSON.stringify(this.toObject());
   }
 
-  public addComponent(id: ComponentID): void {
+  public addComponent(id: string): void {
     if (this.graph.has(id)) {
       return;
     }
     this.graph.set(id, new Set());
   }
 
-  public addDependency(from: ComponentID, to: ComponentID): void {
+  public addDependency(from: string, to: string): void {
     if (!this.graph.has(from)) {
       this.graph.set(from, new Set([to]));
     }
@@ -40,15 +40,15 @@ export class Graph {
     }
   }
 
-  public hasComponent(component: ComponentID) {
+  public hasComponent(component: string) {
     return this.graph.has(component);
   }
 
-  public hasDependency(from: ComponentID, to: ComponentID) {
+  public hasDependency(from: string, to: string) {
     return this.hasComponent(from) && this.hasComponent(to) && this.getDependencies(from).has(to);
   }
 
-  private getDependencies(component: ComponentID) {
+  private getDependencies(component: string) {
     return this.graph.get(component);
   }
 }
