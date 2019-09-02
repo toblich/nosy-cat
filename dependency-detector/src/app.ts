@@ -22,7 +22,7 @@ function checkBulkDependencies(spans: ZipkinSpan[]): ComponentCall[] {
   return spans.map(processSpan);
 }
 
-async function onEveryMessage({ partition, message }: { partition: any; message: Message }) {
+async function onEveryMessage({ partition, message }: { partition: any; message: Message }): void {
   logger.info(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
   let componentCalls: ComponentCall[];
