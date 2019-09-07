@@ -1,7 +1,11 @@
 import { kafkaWrapper, logger } from "helpers";
 import { Tracer } from "zipkin";
 
-export async function consume(tracer: Tracer, topic: string, onEachMessage: (arg: any) => Promise<void>) {
+export async function consume(
+  tracer: Tracer,
+  topic: string,
+  onEachMessage: (arg: any) => Promise<void>
+): Promise<void> {
   logger.debug("entered consume");
 
   try {
