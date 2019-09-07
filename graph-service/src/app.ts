@@ -9,6 +9,7 @@ const { tracer } = createZipkinContextTracer("graph-service");
 
 const app: express.Application = createZipkinExpress(tracer);
 
+// tslint:disable-next-line:typedef
 app.post("/graph", (req, res, next) => {
   try {
     req.body.map(service.add);
@@ -19,6 +20,7 @@ app.post("/graph", (req, res, next) => {
   res.status(201).send();
 });
 
+// tslint:disable-next-line:typedef
 app.get("/graph", (req, res) => {
   res.json(service.toPlainObject());
 });

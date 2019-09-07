@@ -14,7 +14,12 @@ const kafka = (tracer: Tracer): Kafka.Kafka => {
   );
 };
 
-const kafkaWrapper = async (tracer: Tracer) => {
+interface KafkaWrapper {
+  producer: Kafka.Producer;
+  consumer: Kafka.Consumer;
+}
+
+const kafkaWrapper = async (tracer: Tracer): Promise<KafkaWrapper> => {
   const kafkaInstance = kafka(tracer);
   const producer = kafkaInstance.producer();
   const consumer = kafkaInstance.consumer({ groupId: "test" });
