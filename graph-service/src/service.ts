@@ -1,14 +1,14 @@
 import * as httpErrors from "http-errors";
 
-import { Graph } from "./Graph";
+import { Graph, GraphPlainObject } from "./Graph";
 
 let graph = new Graph();
 
-export function toPlainObject() {
+export function toPlainObject(): GraphPlainObject {
   return graph.toPlainObject();
 }
 
-export function clear() {
+export function clear(): void {
   graph = new Graph();
 }
 
@@ -16,7 +16,7 @@ interface ComponentCall {
   caller?: string;
   callee?: string;
 }
-export function add({ caller, callee }: ComponentCall) {
+export function add({ caller, callee }: ComponentCall): void {
   if (caller && callee) {
     graph.addDependency(caller, callee);
   } else if (caller) {
