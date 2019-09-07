@@ -8,7 +8,7 @@ class GraphClient {
     this.url = url;
   }
 
-  public postComponentCalls = (componentCalls: ComponentCall[]) => {
+  public postComponentCalls = (componentCalls: ComponentCall[]): Promise<superagent.Response> => {
     const requestBody: GraphServiceRequestBody = { componentCalls };
 
     return superagent
