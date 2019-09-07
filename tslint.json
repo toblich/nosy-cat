@@ -7,7 +7,8 @@
     "interface-name": [true, "never-prefix"],
     "member-ordering": false,
     "ordered-imports": false,
-    "no-unused-variable": true
+    "no-unused-variable": true,
+    "typedef": [true, "call-signature", "arrow-call-signature", "parameter", "arrow-parameter"]
   },
   "rulesDirectory": [],
   "linterOptions": {}
