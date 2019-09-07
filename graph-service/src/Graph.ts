@@ -7,6 +7,12 @@ export enum Status {
 
 // ---
 
+interface ComponentPlainObject {
+  id: string;
+  dependencies: string[];
+  status: Status;
+}
+
 export class Component {
   public id: string;
   public dependencies: Set<string>;
@@ -26,7 +32,7 @@ export class Component {
     this.dependencies.add(id);
   }
 
-  public toPlainObject(): any {
+  public toPlainObject(): ComponentPlainObject {
     return {
       id: this.id,
       dependencies: Array.from(this.dependencies),
@@ -37,6 +43,10 @@ export class Component {
 
 // ---
 
+export interface GraphPlainObject {
+  [name: string]: ComponentPlainObject;
+}
+
 export class Graph {
   private graph: Map<string, Component>;
 
@@ -44,7 +54,7 @@ export class Graph {
     this.graph = new Map<string, Component>();
   }
 
-  public toPlainObject(): any {
+  public toPlainObject(): GraphPlainObject {
     const objectGraph = {};
     for (const [source, component] of this.graph.entries()) {
       const plainComponent = component.toPlainObject();

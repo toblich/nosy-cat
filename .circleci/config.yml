@@ -22,7 +22,7 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - &cache_key v1-dependencies-{{ checksum "package.json" }}-{{ checksum "ingress/package.json" }}-{{ checksum "helpers/package.json" }}-{{ checksum "dependency-detector/package.json" }}
+            - &cache_key v1-dependencies-{{ checksum "package.json" }}-{{ checksum "ingress/package.json" }}-{{ checksum "helpers/package.json" }}-{{ checksum "dependency-detector/package.json" }}-{{ checksum "graph-service/package.json" }}
             # fallback to using the latest cache if no exact match is found
             - v1-dependencies-
 

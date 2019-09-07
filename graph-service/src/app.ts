@@ -1,8 +1,7 @@
 import * as express from "express";
-import * as httpErrors from "http-errors";
 import { logger, createZipkinContextTracer, createZipkinExpress } from "helpers";
 
-import { Graph } from "./graph";
+import * as service from "./service";
 
 const { tracer } = createZipkinContextTracer("graph-service");
 
@@ -10,11 +9,9 @@ const { tracer } = createZipkinContextTracer("graph-service");
 
 const app: express.Application = createZipkinExpress(tracer);
 
-const graph = new Graph();
-
 app.post("/graph", (req, res, next) => {
   try {
-    req.body.map(add);
+    req.body.map(service.add);
   } catch (e) {
     return next(e);
   }
@@ -23,24 +20,7 @@ app.post("/graph", (req, res, next) => {
 });
 
 app.get("/graph", (req, res) => {
-  res.json(graph.toPlainObject());
+  res.json(service.toPlainObject());
 });
 
 app.listen(4000, () => logger.info("Graph listening on port 4000"));
-
-// --- Graph Service ---
-interface ComponentCall {
-  caller?: string;
-  callee?: string;
-}
-function add({ caller, callee }: ComponentCall) {
-  if (caller && callee) {
-    graph.addDependency(caller, callee);
-  } else if (caller) {
-    graph.addComponent(caller);
-  } else if (callee) {
-    graph.addComponent(callee);
-  } else {
-    throw new httpErrors.BadRequest('The request, must contain a "caller" and/or a "callee"');
-  }
-}
