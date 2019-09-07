@@ -1,4 +1,5 @@
 import { ComponentCall, GraphServiceRequestBody } from "./types";
+import * as superagent from "superagent";
 
 class GraphClient {
   private url: string;
@@ -10,10 +11,10 @@ class GraphClient {
   public postComponentCalls = (componentCalls: ComponentCall[]) => {
     const requestBody: GraphServiceRequestBody = { componentCalls };
 
-    return fetch(`${this.url}/graph`, {
-      method: "POST",
-      body: JSON.stringify(requestBody)
-    });
+    return superagent
+      .post(`${this.url}/graph`)
+      .send(requestBody)
+      .set("Content-Type", "json");
   };
 }
 
