@@ -14,24 +14,18 @@ const processSpan = (span: ZipkinSpan): ComponentCall => ({
   caller: (span.remoteEndpoint && span.remoteEndpoint.serviceName) || undefined
 });
 
-function checkDependency(span: ZipkinSpan): ComponentCall[] {
-  return [processSpan(span)];
+function registerDependencies(value: ZipkinSpan[] | ZipkinSpan): ComponentCall[] {
+  if (Array.isArray(value)) {
+    return value.map(processSpan);
+  }
+
+  return [processSpan(value)];
 }
 
-function checkBulkDependencies(spans: ZipkinSpan[]): ComponentCall[] {
-  return spans.map(processSpan);
-}
-
-async function onEveryMessage({ partition, message }: { partition: any; message: Message }): void {
+async function onEveryMessage({ partition, message }: { partition: any; message: Message }): Promise<void> {
   logger.info(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
-  let componentCalls: ComponentCall[];
-
-  if (Array.isArray(message.value)) {
-    componentCalls = checkBulkDependencies(message.value);
-  } else {
-    componentCalls = checkDependency(message.value);
-  }
+  const componentCalls: ComponentCall[] = registerDependencies(message.value);
 
   await graphClient.postComponentCalls(componentCalls);
 }
