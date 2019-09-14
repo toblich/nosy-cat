@@ -7,13 +7,13 @@ export enum Status {
 
 // ---
 
-interface ComponentPlainObject {
+export interface ComponentPlainObject {
   id: string;
   dependencies: string[];
   status: Status;
 }
 
-export class Component {
+class Component {
   public id: string;
   public dependencies: Set<string>;
   public status: Status;
@@ -41,10 +41,28 @@ export class Component {
   }
 }
 
+class MissingComponent extends Component {
+  constructor() {
+    super("MissingComponent");
+  }
+
+  public dependsOn(_: string): boolean {
+    return false;
+  }
+
+  public addDependency(_: string): void {
+    return;
+  }
+
+  public toPlainObject(): null {
+    return null;
+  }
+}
+
 // ---
 
 export interface GraphPlainObject {
-  [name: string]: ComponentPlainObject;
+  [id: string]: ComponentPlainObject;
 }
 
 export class Graph {
@@ -95,7 +113,7 @@ export class Graph {
     return this.hasComponent(from) && this.hasComponent(to) && this.getComponent(from).dependsOn(to);
   }
 
-  private getComponent(id: string): Component {
-    return this.graph.get(id);
+  public getComponent(id: string): Component {
+    return this.graph.get(id) || new MissingComponent();
   }
 }
