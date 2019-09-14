@@ -1,6 +1,6 @@
 import * as httpErrors from "http-errors";
 
-import { Graph, GraphPlainObject } from "./Graph";
+import { Graph, GraphPlainObject, ComponentPlainObject } from "./Graph";
 
 let graph = new Graph();
 
@@ -24,6 +24,16 @@ export function add({ caller, callee }: ComponentCall): void {
   } else if (callee) {
     graph.addComponent(callee);
   } else {
-    throw new httpErrors.BadRequest('The request, must contain a "caller" and/or a "callee"');
+    throw new httpErrors.BadRequest('The request must contain a "caller" and/or a "callee"');
   }
+}
+
+export function getPlain(id: string): ComponentPlainObject {
+  const plain: ComponentPlainObject = graph.getComponent(id).toPlainObject();
+
+  if (!plain) {
+    throw new httpErrors.NotFound(`Component ${id} does not exist`);
+  }
+
+  return plain;
 }

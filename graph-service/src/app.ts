@@ -1,7 +1,8 @@
 import * as express from "express";
 import { logger, createZipkinContextTracer, createZipkinExpress } from "helpers";
 
-import * as service from "./service";
+import * as controller from "./controller";
+import * as middlewares from "./middlewares";
 
 const { tracer } = createZipkinContextTracer("graph-service");
 
@@ -9,20 +10,12 @@ const { tracer } = createZipkinContextTracer("graph-service");
 
 const app: express.Application = createZipkinExpress(tracer);
 
-// tslint:disable-next-line:typedef
-app.post("/graph", (req, res, next) => {
-  try {
-    req.body.map(service.add);
-  } catch (e) {
-    return next(e);
-  }
+app.use(middlewares.logging);
 
-  res.status(201).send();
-});
+app.post("/graph", controller.addComponentsAndDependencies);
+app.get("/graph", controller.getGraphAsJson);
+app.post("/graph/search", controller.searchComponent);
 
-// tslint:disable-next-line:typedef
-app.get("/graph", (req, res) => {
-  res.json(service.toPlainObject());
-});
+app.use(middlewares.globalErrorHandling);
 
 app.listen(4000, () => logger.info("Graph listening on port 4000"));
