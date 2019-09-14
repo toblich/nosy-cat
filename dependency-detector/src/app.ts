@@ -1,5 +1,5 @@
 import { consume } from "./kafka-integration";
-import { logger, createZipkinContextTracer, ZipkinSpan, ComponentCall, Message, GraphClient } from "helpers";
+import { logger, createZipkinContextTracer, ZipkinSpan, ComponentCall, IngressMessage, GraphClient } from "helpers";
 
 const { tracer } = createZipkinContextTracer("dependency-detector");
 
@@ -22,7 +22,7 @@ function registerDependencies(value: ZipkinSpan[] | ZipkinSpan): ComponentCall[]
   return [processSpan(value)];
 }
 
-async function onEveryMessage({ partition, message }: { partition: any; message: Message }): Promise<void> {
+async function onEveryMessage({ partition, message }: { partition: any; message: IngressMessage }): Promise<void> {
   logger.info(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
   const componentCalls: ComponentCall[] = registerDependencies(message.value);
