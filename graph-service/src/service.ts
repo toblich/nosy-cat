@@ -1,5 +1,5 @@
 import * as httpErrors from "http-errors";
-import { flatMap } from "lodash";
+import { flatMap, uniqBy, dropWhile } from "lodash";
 
 import { Graph, GraphPlainObject, ComponentPlainObject, Status } from "./Graph";
 
@@ -40,12 +40,12 @@ export function getPlain(id: string): ComponentPlainObject {
 }
 
 export function findRootCauses(initialId: string): ComponentPlainObject[] {
-  if (!graph.hasComponent(initialId)) {
+  if (graph.getComponent(initialId).status !== Status.ANOMALOUS) {
     return [];
     // throw new httpErrors.NotFound(`The requested initial id "${initialId}" is not a component in the graph`);
   }
 
-  return internalDFS(initialId, new Set<string>(), []);
+  return uniqBy(internalDFS(initialId, new Set<string>(), []), "id");
 }
 
 export function updateComponentStatus(id: string, status: Status): void {
@@ -58,19 +58,21 @@ export function updateComponentStatus(id: string, status: Status): void {
 function internalDFS(id: string, visited: Set<string>, path: ComponentPlainObject[]): ComponentPlainObject[] {
   const component = graph.getComponent(id).toPlainObject();
 
-  if (component.status !== Status.ANOMALOUS || visited.has(id)) {
-    return [];
+  if (visited.has(id)) {
+    // Cycle detected
+    const cycle = dropWhile(path, (c: ComponentPlainObject): boolean => c.id !== id);
+    cycle.push(component);
+    return cycle;
   }
-
   visited.add(id);
 
-  const hasBrokenDeps = component.dependencies.some(
+  const anomalousDeps = component.dependencies.filter(
     (depId: string) => graph.getComponent(depId).status === Status.ANOMALOUS
   );
-  if (!hasBrokenDeps) {
+  if (anomalousDeps.length === 0) {
     return [component];
   }
 
   path.push(component);
-  return flatMap(component.dependencies, (depId: string) => internalDFS(depId, visited, path));
+  return flatMap(anomalousDeps, (depId: string) => internalDFS(depId, visited, path));
 }

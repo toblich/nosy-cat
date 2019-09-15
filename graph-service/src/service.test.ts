@@ -150,15 +150,17 @@ describe("service", () => {
           describe("with a hanging tail in the middle", () => {
             beforeEach(() => {
               // F is a hanging tail off of D, the loop is A - D - E - A
-              state.graph.D.dependencies = ["E, F"];
+              state.graph.D.dependencies = ["E", "F"];
               state.graph.E = {
                 status: Status.ANOMALOUS,
                 dependencies: ["A"]
               };
-              state.graph.F = {};
+              state.graph.F = {
+                status: Status.ANOMALOUS
+              };
             });
 
-            findRootCauseTest("A", ["B", "D", "E", "A"], state);
+            findRootCauseTest("A", ["B", "D", "E", "A", "F"], state);
           });
           describe("with a hanging tail at the end", () => {
             beforeEach(() => {
