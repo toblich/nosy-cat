@@ -1,6 +1,7 @@
 import * as httpErrors from "http-errors";
+import { flatMap } from "lodash";
 
-import { Graph, GraphPlainObject, ComponentPlainObject } from "./Graph";
+import { Graph, GraphPlainObject, ComponentPlainObject, Status } from "./Graph";
 
 let graph = new Graph();
 
@@ -12,7 +13,7 @@ export function clear(): void {
   graph = new Graph();
 }
 
-interface ComponentCall {
+export interface ComponentCall {
   caller?: string;
   callee?: string;
 }
@@ -36,4 +37,42 @@ export function getPlain(id: string): ComponentPlainObject {
   }
 
   return plain;
+}
+
+export function findRootCauses(initialId: string): ComponentPlainObject[] {
+  if (!graph.hasComponent(initialId)) {
+    return [];
+    // throw new httpErrors.NotFound(`The requested initial id "${initialId}" is not a component in the graph`);
+  }
+
+  return internalDFS(initialId, new Set<string>(), []);
+}
+
+export function updateComponentStatus(id: string, status: Status): void {
+  const component = graph.getComponent(id);
+  component.status = status;
+}
+
+// ---
+
+function internalDFS(id: string, visited: Set<string>, rootCauses: ComponentPlainObject[]): ComponentPlainObject[] {
+  if (visited.has(id)) {
+    return [];
+  }
+
+  visited.add(id);
+  const component = graph.getComponent(id).toPlainObject();
+
+  if (component.status !== Status.ANOMALOUS) {
+    return [];
+  }
+
+  const hasBrokenDeps = component.dependencies.some(
+    (depId: string) => graph.getComponent(depId).status === Status.ANOMALOUS
+  );
+  if (!hasBrokenDeps) {
+    return [component];
+  }
+
+  return flatMap(component.dependencies, (depId: string) => internalDFS(depId, visited, rootCauses));
 }
