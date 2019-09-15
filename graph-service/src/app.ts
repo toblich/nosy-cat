@@ -1,5 +1,6 @@
 import * as express from "express";
 import { logger, createZipkinContextTracer, createZipkinExpress } from "helpers";
+import { mapValues } from "lodash";
 
 import * as controller from "./controller";
 import * as middlewares from "./middlewares";
@@ -8,13 +9,26 @@ const { tracer } = createZipkinContextTracer("graph-service");
 
 // ---
 
+const wrappedController = mapValues(controller, (originalMethod: express.RequestHandler) => {
+  return (req: express.Request, res: express.Response, next: express.NextFunction): void => {
+    try {
+      originalMethod(req, res, next);
+    } catch (e) {
+      next(e);
+      return;
+    }
+  };
+});
+
 const app: express.Application = createZipkinExpress(tracer);
 
 app.use(middlewares.logging);
 
-app.post("/graph", controller.addComponentsAndDependencies);
-app.get("/graph", controller.getGraphAsJson);
-app.post("/graph/search", controller.searchComponent);
+app.post("/graph", wrappedController.addComponentsAndDependencies);
+app.get("/graph", wrappedController.getGraphAsJson);
+app.post("/graph/search", wrappedController.searchComponent);
+app.patch("/graph/components/status", wrappedController.updateComponentStatus);
+app.post("/graph/root-causes", wrappedController.findRootCauses);
 
 app.use(middlewares.globalErrorHandling);
 
