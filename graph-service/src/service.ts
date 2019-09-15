@@ -1,5 +1,5 @@
 import * as httpErrors from "http-errors";
-import { flatMap, uniqBy, dropWhile } from "lodash";
+import { flatMap, uniqBy, takeRightWhile } from "lodash";
 
 import { Graph, GraphPlainObject, ComponentPlainObject, Status } from "./Graph";
 
@@ -60,7 +60,7 @@ function internalDFS(id: string, visited: Set<string>, path: ComponentPlainObjec
 
   if (visited.has(id)) {
     // Cycle detected
-    const cycle = dropWhile(path, (c: ComponentPlainObject): boolean => c.id !== id);
+    const cycle = takeRightWhile(path, (c: ComponentPlainObject): boolean => c.id !== id);
     cycle.push(component);
     return cycle;
   }
