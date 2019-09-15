@@ -55,17 +55,14 @@ export function updateComponentStatus(id: string, status: Status): void {
 
 // ---
 
-function internalDFS(id: string, visited: Set<string>, rootCauses: ComponentPlainObject[]): ComponentPlainObject[] {
-  if (visited.has(id)) {
+function internalDFS(id: string, visited: Set<string>, path: ComponentPlainObject[]): ComponentPlainObject[] {
+  const component = graph.getComponent(id).toPlainObject();
+
+  if (component.status !== Status.ANOMALOUS || visited.has(id)) {
     return [];
   }
 
   visited.add(id);
-  const component = graph.getComponent(id).toPlainObject();
-
-  if (component.status !== Status.ANOMALOUS) {
-    return [];
-  }
 
   const hasBrokenDeps = component.dependencies.some(
     (depId: string) => graph.getComponent(depId).status === Status.ANOMALOUS
@@ -74,5 +71,6 @@ function internalDFS(id: string, visited: Set<string>, rootCauses: ComponentPlai
     return [component];
   }
 
-  return flatMap(component.dependencies, (depId: string) => internalDFS(depId, visited, rootCauses));
+  path.push(component);
+  return flatMap(component.dependencies, (depId: string) => internalDFS(depId, visited, path));
 }

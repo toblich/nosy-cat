@@ -118,7 +118,7 @@ describe("service", () => {
           state.graph = {
             A: {
               status: Status.ANOMALOUS,
-              dependencies: ["B", "C", "D", "E"]
+              dependencies: ["B", "C", "D"]
             },
             B: { status: Status.ANOMALOUS },
             C: {},
@@ -135,6 +135,40 @@ describe("service", () => {
           });
 
           findRootCauseTest("A", ["B", "E"], state);
+        });
+
+        describe("and there is a cycle in the anomalous chain", () => {
+          describe("with a hanging tail at the beginning", () => {
+            beforeEach(() => {
+              // B is the hanging tail off of A in the loop A - D - A
+              state.graph.D.dependencies = ["A"];
+            });
+
+            findRootCauseTest("A", ["A", "B", "D"], state);
+          });
+
+          describe("with a hanging tail in the middle", () => {
+            beforeEach(() => {
+              // F is a hanging tail off of D, the loop is A - D - E - A
+              state.graph.D.dependencies = ["E, F"];
+              state.graph.E = {
+                status: Status.ANOMALOUS,
+                dependencies: ["A"]
+              };
+              state.graph.F = {};
+            });
+
+            findRootCauseTest("A", ["B", "D", "E", "A"], state);
+          });
+          describe("with a hanging tail at the end", () => {
+            beforeEach(() => {
+              // E is a hanging tail off of D in the loop A - D - A
+              state.graph.E = { status: Status.ANOMALOUS };
+              state.graph.D.dependencies = ["E", "A"];
+            });
+
+            findRootCauseTest("A", ["B", "D", "E", "A"], state);
+          });
         });
       });
     });
