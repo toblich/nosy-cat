@@ -28,7 +28,7 @@ function registerDependencies(value: ZipkinSpan[] | ZipkinSpan): ComponentCall[]
   return [processSpan(value)];
 }
 
-const onEachMessageFactory = (producer: Producer): ((_: any) => Promise<void>) => async (...args: any): Promise<void> =>
+const onEachMessageFactory = (producer: Producer): ((_: any) => Promise<void>) => (...args: any): Promise<void> =>
   onEachMessage(producer, args);
 
 async function onEachMessage(producer: Producer, args: any): Promise<void> {
