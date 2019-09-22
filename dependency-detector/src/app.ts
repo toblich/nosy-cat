@@ -35,7 +35,7 @@ async function onEachMessage(producer: Producer, args: any): Promise<void> {
   const value = JSON.parse(message.value.toString());
 
   logger.info(`value ${JSON.stringify(value)}`);
-  const componentCalls: ComponentCall[] = registerDependencies(value);
+  const componentCalls = registerDependencies(value);
   logger.info(`componentCalls ${JSON.stringify(componentCalls)}`);
 
   try {
