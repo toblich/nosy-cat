@@ -32,5 +32,5 @@ app.post("/graph/root-causes", wrappedController.findRootCauses);
 
 app.use(middlewares.globalErrorHandling);
 
-const port = process.env.PORT || 4000;
+const port = process.env.PORT || 6000;
 app.listen(port, () => logger.info(`Graph listening on port ${port}`));
