@@ -33,31 +33,32 @@ async function onEveryMessage({
 
   const service = await graphClient.getService(value.service);
 
-  // const serviceThresholds = {
-  //   errorRate: getServiceThreshold(value, MetricTypes.errorRate),
-  //   responseTime: getServiceThreshold(value, MetricTypes.responseTime),
-  //   throughput: getServiceThreshold(value, MetricTypes.throughput)
-  // };
+  const serviceThresholds = {
+    errorRate: getServiceThreshold(value, MetricTypes.errorRate),
+    responseTime: getServiceThreshold(value, MetricTypes.responseTime),
+    throughput: getServiceThreshold(value, MetricTypes.throughput)
+  };
 
-  // if (isServiceAnomalous(service.body)) {
-  //   return checkIfServiceIsBackToNormal();
-  // }
+  if (isServiceAnomalous(service.body)) {
+    return checkIfServiceIsBackToNormal();
+  }
 
-  // const errorsByMetric = mapValues(serviceThresholds, (_: any, metricKey: string): boolean =>
-  //   metricHasAnomaly(serviceThresholds[metricKey], 1)
-  // );
+  const errorsByMetric = mapValues(serviceThresholds, (_: any, metricKey: string): boolean =>
+    metricHasAnomaly(serviceThresholds[metricKey], 1)
+  );
 
-  // const hasError = Object.keys(errorsByMetric).some((metricKey: string) => errorsByMetric[metricKey]);
+  const hasError = Object.keys(errorsByMetric).some((metricKey: string) => errorsByMetric[metricKey]);
 
-  // if (!hasError) {
-  //   return;
-  // }
+  if (!hasError) {
+    return;
+  }
 
-  // const errorMessages = mapValues(
-  //   errorsByMetric,
-  //   (metricHasError: boolean, metricKey: string): string =>
-  //     metricHasError && getMetricErrorMessage(MetricTypes[metricKey], 1, serviceThresholds[metricKey], service.name)
-  // );
+  const errorMessages = mapValues(
+    errorsByMetric,
+    (metricHasError: boolean, metricKey: string): string =>
+      metricHasError &&
+      getMetricErrorMessage(MetricTypes[metricKey], 1, serviceThresholds[metricKey], (service as any).name)
+  );
 }
 
 function checkIfServiceIsBackToNormal(): void {
