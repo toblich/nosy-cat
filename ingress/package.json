@@ -7,7 +7,7 @@
     "start": "nodemon --config ../nodemon.json --exec 'ts-node' .",
     "build": "tsc -p .",
     "start:prod": "node ./build/app.js",
-    "test": "jest --forceExit --detectOpenHandles --coverage --verbose"
+    "test": "jest --forceExit --detectOpenHandles --coverage --verbose --passWithNoTests"
   },
   "author": "",
   "license": "BSD-3-Clause",
