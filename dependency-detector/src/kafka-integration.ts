@@ -4,7 +4,7 @@ import { Tracer } from "zipkin";
 export async function consume(
   tracer: Tracer,
   topic: string,
-  onEachMessage: (producer: Producer) => (arg: any) => Promise<void>
+  onEachMessageFactory: (producer: Producer) => (arg: any) => Promise<void>
 ): Promise<void> {
   logger.debug("entered consume");
 
@@ -21,7 +21,7 @@ export async function consume(
     logger.debug(`processing messages from topic "${topic}"...`);
 
     await consumer.run({
-      eachMessage: onEachMessage(producer)
+      eachMessage: onEachMessageFactory(producer)
     });
   } catch (err) {
     logger.error(err);

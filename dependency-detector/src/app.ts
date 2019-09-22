@@ -29,9 +29,9 @@ function registerDependencies(value: ZipkinSpan[] | ZipkinSpan): ComponentCall[]
 }
 
 const onEachMessageFactory = (producer: Producer): ((_: any) => Promise<void>) => async (...args: any): Promise<void> =>
-  onEveryMessage(producer, args);
+  onEachMessage(producer, args);
 
-async function onEveryMessage(producer: Producer, args: any): Promise<void> {
+async function onEachMessage(producer: Producer, args: any): Promise<void> {
   const [{ partition, message }] = args;
   logger.info(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
