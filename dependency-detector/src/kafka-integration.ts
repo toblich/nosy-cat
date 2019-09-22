@@ -1,17 +1,23 @@
-import { kafkaWrapper, logger } from "helpers";
+import { kafkaWrapper, logger, Producer } from "helpers";
 import { Tracer } from "zipkin";
+
+const onEachMessageFactory = (
+  producer: Producer,
+  onEachMessage: (...args: any) => Promise<void>
+): ((...args: any) => Promise<void>) => (...args: any): Promise<void> => onEachMessage(producer, args);
 
 export async function consume(
   tracer: Tracer,
   topic: string,
-  onEachMessage: (arg: any) => Promise<void>
+  onEachMessage: (producer: Producer, arg: any) => Promise<void>
 ): Promise<void> {
   logger.debug("entered consume");
 
   try {
-    const kafka = await kafkaWrapper(tracer);
+    const kafka = await kafkaWrapper(tracer, "dependency-detector");
 
     const consumer = await kafka.consumer;
+    const producer = await kafka.producer;
 
     logger.debug(`subscribing to topic "${topic}"`);
 
@@ -20,7 +26,7 @@ export async function consume(
     logger.debug(`processing messages from topic "${topic}"...`);
 
     await consumer.run({
-      eachMessage: onEachMessage
+      eachMessage: onEachMessageFactory(producer, onEachMessage)
     });
   } catch (err) {
     logger.error(err);
