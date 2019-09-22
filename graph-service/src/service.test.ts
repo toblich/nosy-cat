@@ -88,11 +88,12 @@ describe("service", () => {
       });
     }
 
-    describe("when the root component does not exist", () => findRootCauseTest("Z", [], { graph: {} }));
+    describe("when the initial component does not exist", () => findRootCauseTest("Z", [], { graph: {} }));
 
-    describe("when the root component exists and is healthy", () => findRootCauseTest("A", [], { graph: { A: {} } }));
+    describe("when the initial component exists and is healthy", () =>
+      findRootCauseTest("A", [], { graph: { A: {} } }));
 
-    describe("when the root component exists and is anomalous", () => {
+    describe("when the initial component exists and is anomalous", () => {
       const state: any = {
         graph: {}
       };

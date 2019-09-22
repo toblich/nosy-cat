@@ -60,6 +60,9 @@ function internalDFS(id: string, visited: Set<string>, path: ComponentPlainObjec
 
   if (visited.has(id)) {
     // Cycle detected
+    // Since the path array has the ordered list of components visited to reach the current component,
+    // take the components visited since the first time that we visited the current one. That's the cycle
+    // that has formed and was detected.
     const cycle = takeRightWhile(path, (c: ComponentPlainObject): boolean => c.id !== id);
     cycle.push(component);
     return cycle;
