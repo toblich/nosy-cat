@@ -1,6 +1,5 @@
 import { ComponentCall } from "./types";
 import * as superagent from "superagent";
-import { logger } from "./logger";
 
 class GraphClient {
   private url: string;

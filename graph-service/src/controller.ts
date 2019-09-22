@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { Status } from "./Graph";
 import * as service from "./service";
-import { logger } from "helpers";
 
 interface Body<T> extends Request {
   body: T;

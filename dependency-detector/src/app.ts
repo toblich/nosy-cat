@@ -41,7 +41,6 @@ async function onEachMessage(producer: Producer, args: any): Promise<void> {
   try {
     await graphClient.postComponentCalls(componentCalls);
     await producer.send({
-      acks: -1,
       topic: "dependency-detector",
       messages: [
         {
