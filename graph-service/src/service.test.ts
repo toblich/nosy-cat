@@ -67,7 +67,11 @@ describe("service", () => {
         [id: string]: { dependencies?: string[]; status?: Status };
       };
     }
-    function findRootCauseTest(initialId: string, expectedIds: string[], state: GraphPlainPartialObject): void {
+    function findRootCauseTest(
+      initialId: string,
+      expected: string[] | httpErrors.HttpErrorConstructor,
+      state: GraphPlainPartialObject
+    ): void {
       it("should yield the expected root causes", () => {
         // test-case setup
         forEach(state.graph, ({ dependencies, status }: ComponentPlainObject, id: string) => {
@@ -79,16 +83,21 @@ describe("service", () => {
           }
         });
 
-        const rootIds = service
-          .findRootCauses(initialId)
-          .map((component: ComponentPlainObject) => component.id)
-          .sort();
+        if (Array.isArray(expected)) {
+          const rootIds = service
+            .findRootCauses(initialId)
+            .map((component: ComponentPlainObject) => component.id)
+            .sort();
 
-        expect(rootIds).toEqual(expectedIds.sort());
+          expect(rootIds).toEqual(expected.sort());
+        } else {
+          expect(() => service.findRootCauses(initialId)).toThrowError(expected);
+        }
       });
     }
 
-    describe("when the initial component does not exist", () => findRootCauseTest("Z", [], { graph: {} }));
+    describe("when the initial component does not exist", () =>
+      findRootCauseTest("Z", httpErrors.NotFound, { graph: {} }));
 
     describe("when the initial component exists and is healthy", () =>
       findRootCauseTest("A", [], { graph: { A: {} } }));

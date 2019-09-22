@@ -40,9 +40,15 @@ export function getPlain(id: string): ComponentPlainObject {
 }
 
 export function findRootCauses(initialId: string): ComponentPlainObject[] {
-  if (graph.getComponent(initialId).status !== Status.ANOMALOUS) {
+  const initialComponent = graph.getComponent(initialId).toPlainObject();
+  if (!initialComponent) {
+    throw new httpErrors.NotFound(
+      `The requested initial id "${initialId}" is not a component in the graph ${graph.toString()}`
+    );
+  }
+
+  if (initialComponent.status !== Status.ANOMALOUS) {
     return [];
-    // throw new httpErrors.NotFound(`The requested initial id "${initialId}" is not a component in the graph`);
   }
 
   return uniqBy(internalDFS(initialId, new Set<string>(), []), "id");

@@ -83,7 +83,7 @@ export class Graph {
   }
 
   public toString(): string {
-    return JSON.stringify(this.toPlainObject());
+    return JSON.stringify(this.toPlainObject(), null, 4);
   }
 
   public addComponent(id: string): void {
