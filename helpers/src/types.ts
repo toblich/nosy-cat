@@ -40,10 +40,6 @@ export interface ComponentCall {
   callee: string;
 }
 
-export interface GraphServiceRequestBody {
-  componentCalls: ComponentCall[];
-}
-
 export interface Dictionary<T> {
   [x: string]: T;
 }

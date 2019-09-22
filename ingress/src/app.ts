@@ -1,25 +1,22 @@
 import * as express from "express";
 import { logger, kafkaWrapper, createZipkinContextTracer, createZipkinExpress } from "helpers";
-import { ping, spans } from "./kafka-integration";
+import { spans } from "./kafka-integration";
 
 const contextTracer = createZipkinContextTracer("ingress");
 
-const app: express.Application = createZipkinExpress(contextTracer.tracer);
+const app = createZipkinExpress(contextTracer.tracer);
 
-const wrapper = kafkaWrapper(contextTracer.tracer);
+const wrapper = kafkaWrapper(contextTracer.tracer, "ingress");
 
 logger.info("Starting ingress app...");
 
+// tslint:disable-next-line:typedef
 const run = async () => {
   const kafka = await wrapper;
 
   const producer = kafka.producer;
 
-  app.get("/ping", (req, res) => {
-    ping(producer as any);
-    res.send("pong");
-  });
-
+  // tslint:disable-next-line:typedef
   app.post("/api/v2/spans", async (req, res) => {
     const body = req.body;
 
@@ -27,7 +24,7 @@ const run = async () => {
       await spans(producer as any, body);
       res.send();
     } catch (error) {
-      res.status(error.status || 500).send(error.message || 'InternalServerError');
+      res.status(error.status || 500).send(error.message || "InternalServerError");
     }
   });
 

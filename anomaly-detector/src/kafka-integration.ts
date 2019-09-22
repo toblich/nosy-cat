@@ -9,7 +9,7 @@ export async function consume(
   logger.debug("entered consume");
 
   try {
-    const kafka = await kafkaWrapper(tracer);
+    const kafka = await kafkaWrapper(tracer, "anomaly-detector");
 
     const consumer = await kafka.consumer;
 

@@ -5,12 +5,12 @@ const { tracer } = createZipkinContextTracer("dependency-detector");
 
 consume(tracer, "ingress", onEveryMessage);
 
-const graphClient = new GraphClient("http://localhost:4000");
+const graphClient = new GraphClient(`http://localhost:${process.env.GRAPH_PORT || 6000}`);
 
 // ---
 
 const processSpan = (span: ZipkinSpan): ComponentCall => ({
-  callee: span.localEndpoint.serviceName,
+  callee: (span.localEndpoint && span.localEndpoint.serviceName) || undefined,
   caller: (span.remoteEndpoint && span.remoteEndpoint.serviceName) || undefined
 });
 
@@ -25,7 +25,15 @@ function registerDependencies(value: ZipkinSpan[] | ZipkinSpan): ComponentCall[]
 async function onEveryMessage({ partition, message }: { partition: any; message: IngressMessage }): Promise<void> {
   logger.info(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
-  const componentCalls: ComponentCall[] = registerDependencies(message.value);
+  const value = JSON.parse(message.value.toString());
 
-  await graphClient.postComponentCalls(componentCalls);
+  logger.info(`value ${JSON.stringify(value)}`);
+  const componentCalls: ComponentCall[] = registerDependencies(value);
+  logger.info(`componentCalls ${JSON.stringify(componentCalls)}`);
+
+  try {
+    await graphClient.postComponentCalls(componentCalls);
+  } catch (error) {
+    logger.error(error);
+  }
 }

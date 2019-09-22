@@ -18,4 +18,5 @@ app.post("/graph/search", controller.searchComponent);
 
 app.use(middlewares.globalErrorHandling);
 
-app.listen(4000, () => logger.info("Graph listening on port 4000"));
+const port = process.env.PORT || 4000;
+app.listen(port, () => logger.info(`Graph listening on port ${port}`));

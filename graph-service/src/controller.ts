@@ -1,7 +1,9 @@
 import * as service from "./service";
+import { logger } from "helpers";
 
 // tslint:disable-next-line: typedef
 export function addComponentsAndDependencies(req, res, next) {
+  logger.info(`body: ${JSON.stringify(req.body)}`);
   try {
     req.body.map(service.add);
   } catch (e) {

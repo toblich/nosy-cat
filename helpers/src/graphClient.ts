@@ -1,5 +1,6 @@
-import { ComponentCall, GraphServiceRequestBody } from "./types";
+import { ComponentCall } from "./types";
 import * as superagent from "superagent";
+import { logger } from "./logger";
 
 class GraphClient {
   private url: string;
@@ -9,12 +10,14 @@ class GraphClient {
   }
 
   public postComponentCalls = (componentCalls: ComponentCall[]): Promise<superagent.Response> => {
-    const requestBody: GraphServiceRequestBody = { componentCalls };
+    logger.info(`calling component info, url: ${this.url}`);
+    return superagent.post(`${this.url}/graph`).send(componentCalls);
+  };
 
-    return superagent
-      .post(`${this.url}/graph`)
-      .send(requestBody)
-      .set("Content-Type", "json");
+  public getService = (serviceName: string): Promise<superagent.Response> => {
+    const requestBody = { serviceName };
+
+    return superagent.post(`${this.url}/graph/search`).send(requestBody);
   };
 }
 
