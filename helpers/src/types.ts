@@ -1,3 +1,5 @@
+import * as Kafka from "kafkajs";
+
 export enum ServiceStatus {
   NORMAL = "NORMAL",
   SUSPICIOUS = "SUSPICIOUS",
@@ -43,3 +45,6 @@ export interface ComponentCall {
 export interface Dictionary<T> {
   [x: string]: T;
 }
+
+export type Producer = Kafka.Producer;
+export type Consumer = Kafka.Consumer;

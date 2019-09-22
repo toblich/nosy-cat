@@ -1,9 +1,15 @@
 import { consume } from "./kafka-integration";
-import { logger, createZipkinContextTracer, ZipkinSpan, ComponentCall, IngressMessage, GraphClient } from "helpers";
+import {
+  logger,
+  createZipkinContextTracer,
+  ZipkinSpan,
+  ComponentCall,
+  IngressMessage,
+  GraphClient,
+  Producer
+} from "helpers";
 
 const { tracer } = createZipkinContextTracer("dependency-detector");
-
-consume(tracer, "ingress", onEveryMessage);
 
 const graphClient = new GraphClient(`http://localhost:${process.env.GRAPH_PORT || 6000}`);
 
@@ -22,7 +28,11 @@ function registerDependencies(value: ZipkinSpan[] | ZipkinSpan): ComponentCall[]
   return [processSpan(value)];
 }
 
-async function onEveryMessage({ partition, message }: { partition: any; message: IngressMessage }): Promise<void> {
+const onEachMessageFactory = (producer: Producer): ((_: any) => Promise<void>) => async (...args: any): Promise<void> =>
+  onEveryMessage(producer, args);
+
+async function onEveryMessage(producer: Producer, args: any): Promise<void> {
+  const [{ partition, message }] = args;
   logger.info(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
   const value = JSON.parse(message.value.toString());
@@ -33,7 +43,18 @@ async function onEveryMessage({ partition, message }: { partition: any; message:
 
   try {
     await graphClient.postComponentCalls(componentCalls);
+    await producer.send({
+      acks: -1,
+      topic: "dependency-detector",
+      messages: [
+        {
+          value: JSON.stringify(componentCalls)
+        }
+      ]
+    });
   } catch (error) {
     logger.error(error);
   }
 }
+
+consume(tracer, "ingress", onEachMessageFactory);
