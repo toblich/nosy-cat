@@ -1,16 +1,26 @@
+import * as redisMock from "redis-mock";
+import { promisifyAll } from "bluebird";
+import { redis } from "helpers";
+
+promisifyAll(redisMock.RedisClient.prototype);
+promisifyAll(redisMock.Multi.prototype);
+
+const mock = jest.spyOn(redis, "createClient").mockImplementation((...args: any) => redisMock.createClient(...args));
+
 import * as httpErrors from "http-errors";
-import { forEach } from "lodash";
+import { forEach, mapValues } from "lodash";
 import * as service from "./service";
 import { Status, ComponentPlainObject } from "./Graph";
 
 describe("service", () => {
   beforeEach(service.clear);
+  beforeEach(() => mock.mockClear());
 
   describe("a complete case", () => {
     let toAdd;
     let expected;
 
-    beforeEach(() => {
+    beforeEach(async () => {
       toAdd = [
         { caller: "A", callee: "B" },
         { caller: "C" },
@@ -19,19 +29,24 @@ describe("service", () => {
         { caller: "E", callee: "B" }
       ];
 
-      expected = {
-        A: { dependencies: ["B", "E"], status: "OK" },
-        B: { dependencies: [], status: "OK" },
-        C: { dependencies: [], status: "OK" },
-        D: { dependencies: [], status: "OK" },
-        E: { dependencies: ["B"], status: "OK" }
-      };
+      expected = mapValues(
+        {
+          A: { dependencies: ["B", "E"], status: "OK" },
+          B: { dependencies: [], status: "OK" },
+          C: { dependencies: [], status: "OK" },
+          D: { dependencies: [], status: "OK" },
+          E: { dependencies: ["B"], status: "OK" }
+        },
+        (component: any) =>
+          Object.assign(component, { metrics: { throughput: 0, meanResponseTimeMs: 0, errorRate: 0 } })
+      );
 
-      toAdd.forEach(service.add);
+      toAdd.forEach(async (componentCall: any) => await service.add(componentCall));
     });
 
-    it("should deep equal the expected graph", () => {
-      expect(service.toPlainObject()).toEqual(expected);
+    it("should deep equal the expected graph", async () => {
+      const result = await service.toPlainObject();
+      expect(result).toEqual(expected);
     });
   });
 

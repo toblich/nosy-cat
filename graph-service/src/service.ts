@@ -56,7 +56,9 @@ export interface ComponentCall {
 export async function add({ caller, callee, metrics }: ComponentCall): Promise<void> {
   if (caller && callee) {
     graph.addDependency(caller, callee);
-    await metricsRepository.processRequest({ ...metrics, component: callee });
+    if (metrics) {
+      await metricsRepository.processRequest({ ...metrics, component: callee });
+    }
   } else if (caller) {
     graph.addComponent(caller);
   } else if (callee) {
