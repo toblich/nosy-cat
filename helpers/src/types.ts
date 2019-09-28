@@ -34,7 +34,7 @@ export interface DependencyDetectionMessage extends BaseMessage<ComponentCall[]>
 export interface ComponentCall {
   caller?: string;
   callee: string;
-  metrics: {
+  metrics?: {
     duration: number;
     errored: boolean;
     timestamp: number;
