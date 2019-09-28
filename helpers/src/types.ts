@@ -22,12 +22,6 @@ export interface ZipkinSpan {
 
 export type ZipkinMessageValue = ZipkinSpan[] | ZipkinSpan;
 
-export interface DependencyDetectionMessageValue {
-  service: string;
-  lastResponseDuration: number;
-  timestamp: number;
-}
-
 export interface BaseMessage<T> {
   offset: number;
   value: T;
@@ -35,11 +29,16 @@ export interface BaseMessage<T> {
 
 export interface IngressMessage extends BaseMessage<ZipkinMessageValue> {}
 
-export interface DependencyDetectionMessage extends BaseMessage<DependencyDetectionMessageValue> {}
+export interface DependencyDetectionMessage extends BaseMessage<ComponentCall[]> {}
 
 export interface ComponentCall {
   caller?: string;
   callee: string;
+  metrics: {
+    duration: number;
+    errored: boolean;
+    timestamp: number;
+  };
 }
 
 export interface Dictionary<T> {
