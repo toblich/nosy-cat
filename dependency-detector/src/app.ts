@@ -28,23 +28,19 @@ function registerDependencies(value: ZipkinSpan[] | ZipkinSpan): ComponentCall[]
   return [processSpan(value)];
 }
 
-const onEachMessageFactory = (producer: Producer): ((_: any) => Promise<void>) => async (...args: any): Promise<void> =>
-  onEveryMessage(producer, args);
-
-async function onEveryMessage(producer: Producer, args: any): Promise<void> {
+async function onEachMessage(producer: Producer, args: any): Promise<void> {
   const [{ partition, message }] = args;
   logger.info(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
   const value = JSON.parse(message.value.toString());
 
   logger.info(`value ${JSON.stringify(value)}`);
-  const componentCalls: ComponentCall[] = registerDependencies(value);
+  const componentCalls = registerDependencies(value);
   logger.info(`componentCalls ${JSON.stringify(componentCalls)}`);
 
   try {
     await graphClient.postComponentCalls(componentCalls);
     await producer.send({
-      acks: -1,
       topic: "dependency-detector",
       messages: [
         {
@@ -57,4 +53,4 @@ async function onEveryMessage(producer: Producer, args: any): Promise<void> {
   }
 }
 
-consume(tracer, "ingress", onEachMessageFactory);
+consume(tracer, "ingress", onEachMessage);

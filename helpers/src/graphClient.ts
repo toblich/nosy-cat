@@ -10,7 +10,6 @@ class GraphClient {
   }
 
   public postComponentCalls = (componentCalls: ComponentCall[]): Promise<superagent.Response> => {
-    logger.info(`calling component info, url: ${this.url}`);
     return superagent.post(`${this.url}/graph`).send(componentCalls);
   };
 
