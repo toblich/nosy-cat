@@ -31,14 +31,22 @@ export interface IngressMessage extends BaseMessage<ZipkinMessageValue> {}
 
 export interface DependencyDetectionMessage extends BaseMessage<ComponentCall[]> {}
 
+export interface ComponentMetrics {
+  throughput: number;
+  meanResponseTimeMs: number;
+  errorRate: number; // Float in range [0, 1]
+}
+
+export interface ComponentCallMetrics {
+  duration: number;
+  errored: boolean;
+  timestamp: number;
+}
+
 export interface ComponentCall {
   caller?: string;
   callee: string;
-  metrics?: {
-    duration: number;
-    errored: boolean;
-    timestamp: number;
-  };
+  metrics?: ComponentCallMetrics;
 }
 
 export interface Dictionary<T> {
