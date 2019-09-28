@@ -17,7 +17,7 @@ interface UpdateStatusBody {
 }
 
 export async function addComponentsAndDependencies(req: Body<service.ComponentCall[]>, res: Response): Promise<void> {
-  req.body.map(async (component: service.ComponentCall) => await service.add(component));
+  await Promise.all(req.body.map((component: service.ComponentCall) => service.add(component)));
   res.status(201).send();
 }
 

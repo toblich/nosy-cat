@@ -26,7 +26,9 @@ export async function processRequest({ component, errored, timestamp, duration }
     multi.hincrby(key, "errors", 1);
   }
   multi.expire(key, 600); // Set expiration to 10 min to keep some (short) history
-  return (multi as any).execAsync().then(() => logger.debug(`metrics set for key "${key}"`));
+
+  await (multi as any).execAsync();
+  logger.debug(`metrics set for key "${key}"`);
 }
 
 export interface Metrics {
@@ -34,7 +36,7 @@ export interface Metrics {
   meanResponseTimeMs: number;
   errorRate: number;
 }
-export async function getCurrent(component: string): Promise<Metrics | undefined> {
+export async function getCurrent(component: string): Promise<Metrics> {
   const key = await getKey(component, Date.now());
 
   const metrics = await (redisClient as any).hgetallAsync(key);
@@ -44,14 +46,14 @@ export async function getCurrent(component: string): Promise<Metrics | undefined
       throughput: 0,
       meanResponseTimeMs: 0,
       errorRate: 0
-    } as Metrics;
+    };
   }
 
   return {
     throughput: metrics[fields.THROUGHPUT],
     meanResponseTimeMs: metrics[fields.TOTAL_MS] / metrics[fields.THROUGHPUT],
     errorRate: metrics[fields.ERRORS] / fields[fields.THROUGHPUT]
-  } as Metrics;
+  };
 }
 
 // --- Helper functions ---
