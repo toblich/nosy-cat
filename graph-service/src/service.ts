@@ -1,12 +1,42 @@
 import * as httpErrors from "http-errors";
-import { flatMap, uniqBy, takeRightWhile } from "lodash";
+import { flatMap, uniqBy, takeRightWhile, mapValues } from "lodash";
 
 import { Graph, GraphPlainObject, ComponentPlainObject, Status } from "./Graph";
+import { props as awaitProps } from "bluebird";
+import * as metricsRepository from "./metrics";
 
 let graph = new Graph();
 
-export function toPlainObject(): GraphPlainObject {
-  return graph.toPlainObject();
+type ComponentWithMetrics = {
+  [k in keyof ComponentPlainObject]: ComponentPlainObject[k];
+} & { metrics?: metricsRepository.Metrics };
+
+interface GraphDebugObject {
+  [id: string]: ComponentWithMetrics;
+}
+
+export async function toPlainObject(): Promise<GraphDebugObject> {
+  const plainGraph = graph.toPlainObject();
+
+  const metricsByComponent: any = {};
+  for (const componentId in plainGraph) {
+    if (plainGraph.hasOwnProperty(componentId)) {
+      // start fetching all component's metrics concurrently
+      metricsByComponent[componentId] = metricsRepository.getCurrent(componentId);
+    }
+  }
+
+  const graphDebugObject: GraphDebugObject = {};
+  for (const componentId in plainGraph) {
+    if (plainGraph.hasOwnProperty(componentId)) {
+      // await and compose all results
+      graphDebugObject[componentId] = {
+        metrics: await metricsByComponent[componentId],
+        ...plainGraph[componentId]
+      };
+    }
+  }
+  return graphDebugObject;
 }
 
 export function clear(): void {
@@ -16,10 +46,17 @@ export function clear(): void {
 export interface ComponentCall {
   caller?: string;
   callee?: string;
+  metrics?: {
+    // required if both other props are set
+    duration: number;
+    timestamp: number;
+    errored: boolean;
+  };
 }
-export function add({ caller, callee }: ComponentCall): void {
+export async function add({ caller, callee, metrics }: ComponentCall): Promise<void> {
   if (caller && callee) {
     graph.addDependency(caller, callee);
+    await metricsRepository.processRequest({ ...metrics, component: callee });
   } else if (caller) {
     graph.addComponent(caller);
   } else if (callee) {

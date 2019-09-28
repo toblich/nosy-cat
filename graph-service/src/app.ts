@@ -12,7 +12,11 @@ const { tracer } = createZipkinContextTracer("graph-service");
 const wrappedController = mapValues(controller, (originalMethod: express.RequestHandler) => {
   return (req: express.Request, res: express.Response, next: express.NextFunction): void => {
     try {
-      originalMethod(req, res, next);
+      const result = originalMethod(req, res, next);
+      if (typeof result.catch === "function") {
+        // catch errors for async methods
+        result.catch(next);
+      }
     } catch (e) {
       next(e);
       return;
