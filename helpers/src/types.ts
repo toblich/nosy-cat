@@ -1,6 +1,7 @@
 import * as Kafka from "kafkajs";
+import { Request } from "express";
 
-export enum ServiceStatus {
+export enum ComponentStatus {
   NORMAL = "NORMAL",
   SUSPICIOUS = "SUSPICIOUS",
   CONFIRMED = "CONFIRMED",
@@ -49,9 +50,30 @@ export interface ComponentCall {
   metrics?: ComponentCallMetrics;
 }
 
+export interface ComponentPlainObject {
+  id: string;
+  dependencies: string[];
+  status: ComponentStatus;
+}
+
 export interface Dictionary<T> {
   [x: string]: T;
 }
+
+interface ExpressReq<Body> extends Request {
+  body: Body;
+}
+
+export type UpdateComponentStatusReq = ExpressReq<{
+  component: string;
+  status: ComponentStatus;
+}>;
+
+export type ComponentIdReq = ExpressReq<{ component: string }>;
+
+export type AddComponentsReq = ExpressReq<ComponentCall[]>;
+
+export type EmptyReq = ExpressReq<{}>;
 
 export type Producer = Kafka.Producer;
 export type Consumer = Kafka.Consumer;

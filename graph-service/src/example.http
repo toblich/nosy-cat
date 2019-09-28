@@ -1,0 +1,18 @@
+@base = http://localhost:6000
+
+GET {{base}}/graph
+
+###
+
+POST {{base}}/graph
+content-type: application/json
+
+[{
+  "caller": "A",
+  "callee": "B",
+  "metrics": {
+    "duration": 12,
+    "errored": true,
+    "timestamp": {{$timestamp}}000
+  }
+}]

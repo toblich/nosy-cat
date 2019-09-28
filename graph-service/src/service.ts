@@ -1,15 +1,15 @@
 import * as httpErrors from "http-errors";
-import { flatMap, uniqBy, takeRightWhile, mapValues } from "lodash";
+import { flatMap, uniqBy, takeRightWhile } from "lodash";
 
-import { Graph, GraphPlainObject, ComponentPlainObject, Status } from "./Graph";
-import { props as awaitProps } from "bluebird";
+import { Graph } from "./Graph";
 import * as metricsRepository from "./metrics";
+import { ComponentStatus, ComponentPlainObject, ComponentCall, ComponentMetrics } from "helpers";
 
 let graph = new Graph();
 
 type ComponentWithMetrics = {
   [k in keyof ComponentPlainObject]: ComponentPlainObject[k];
-} & { metrics?: metricsRepository.Metrics };
+} & { metrics?: ComponentMetrics };
 
 interface GraphDebugObject {
   [id: string]: ComponentWithMetrics;
@@ -43,16 +43,6 @@ export function clear(): void {
   graph = new Graph();
 }
 
-export interface ComponentCall {
-  caller?: string;
-  callee?: string;
-  metrics?: {
-    // required if both other props are set
-    duration: number;
-    timestamp: number;
-    errored: boolean;
-  };
-}
 export async function add({ caller, callee, metrics }: ComponentCall): Promise<void> {
   if (caller && callee) {
     graph.addDependency(caller, callee);
@@ -86,14 +76,14 @@ export function findRootCauses(initialId: string): ComponentPlainObject[] {
     );
   }
 
-  if (initialComponent.status !== Status.ANOMALOUS) {
+  if (initialComponent.status === ComponentStatus.NORMAL) {
     return [];
   }
 
   return uniqBy(internalDFS(initialId, new Set<string>(), []), "id");
 }
 
-export function updateComponentStatus(id: string, status: Status): void {
+export function updateComponentStatus(id: string, status: ComponentStatus): void {
   const component = graph.getComponent(id);
   component.status = status;
 }
@@ -115,7 +105,7 @@ function internalDFS(id: string, visited: Set<string>, path: ComponentPlainObjec
   visited.add(id);
 
   const anomalousDeps = component.dependencies.filter(
-    (depId: string) => graph.getComponent(depId).status === Status.ANOMALOUS
+    (depId: string) => graph.getComponent(depId).status !== ComponentStatus.NORMAL
   );
   if (anomalousDeps.length === 0) {
     return [component];

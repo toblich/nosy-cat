@@ -1,6 +1,6 @@
 import * as redisMock from "redis-mock";
 import { promisifyAll } from "bluebird";
-import { redis } from "helpers";
+import { redis, ComponentStatus, ComponentPlainObject } from "helpers";
 
 promisifyAll(redisMock.RedisClient.prototype);
 promisifyAll(redisMock.Multi.prototype);
@@ -10,7 +10,6 @@ const mock = jest.spyOn(redis, "createClient").mockImplementation((...args: any)
 import * as httpErrors from "http-errors";
 import { forEach, mapValues } from "lodash";
 import * as service from "./service";
-import { Status, ComponentPlainObject } from "./Graph";
 
 describe("service", () => {
   beforeEach(service.clear);
@@ -64,7 +63,7 @@ describe("service", () => {
         expect(component).toEqual({
           id: existingId,
           dependencies: [],
-          status: Status.OK
+          status: ComponentStatus.NORMAL
         });
       });
     });
@@ -79,7 +78,7 @@ describe("service", () => {
   describe("#findRootCauses", () => {
     interface GraphPlainPartialObject {
       graph: {
-        [id: string]: { dependencies?: string[]; status?: Status };
+        [id: string]: { dependencies?: string[]; status?: ComponentStatus };
       };
     }
     function findRootCauseTest(
@@ -91,7 +90,7 @@ describe("service", () => {
         // test-case setup
         forEach(state.graph, ({ dependencies, status }: ComponentPlainObject, id: string) => {
           service.add({ caller: id }); // insert component even if there are no deps
-          service.updateComponentStatus(id, status || Status.OK); // set status
+          service.updateComponentStatus(id, status || ComponentStatus.NORMAL); // set status
           for (const depId of dependencies || []) {
             // insert dependencies (if there are some)
             service.add({ caller: id, callee: depId });
@@ -124,7 +123,7 @@ describe("service", () => {
 
       beforeEach(() => {
         state.graph = {
-          A: { status: Status.ANOMALOUS }
+          A: { status: ComponentStatus.SUSPICIOUS }
         };
       });
 
@@ -142,12 +141,12 @@ describe("service", () => {
         beforeEach(() => {
           state.graph = {
             A: {
-              status: Status.ANOMALOUS,
+              status: ComponentStatus.SUSPICIOUS,
               dependencies: ["B", "C", "D"]
             },
-            B: { status: Status.ANOMALOUS },
+            B: { status: ComponentStatus.SUSPICIOUS },
             C: {},
-            D: { status: Status.ANOMALOUS }
+            D: { status: ComponentStatus.SUSPICIOUS }
           };
         });
 
@@ -155,7 +154,7 @@ describe("service", () => {
 
         describe("and some of them have broken dependencies", () => {
           beforeEach(() => {
-            state.graph.E = { status: Status.ANOMALOUS };
+            state.graph.E = { status: ComponentStatus.SUSPICIOUS };
             state.graph.D.dependencies = ["E"];
           });
 
@@ -177,11 +176,11 @@ describe("service", () => {
               // F is a hanging tail off of D, the loop is A - D - E - A
               state.graph.D.dependencies = ["E", "F"];
               state.graph.E = {
-                status: Status.ANOMALOUS,
+                status: ComponentStatus.SUSPICIOUS,
                 dependencies: ["A"]
               };
               state.graph.F = {
-                status: Status.ANOMALOUS
+                status: ComponentStatus.SUSPICIOUS
               };
             });
 
@@ -190,7 +189,7 @@ describe("service", () => {
           describe("with a hanging tail at the end", () => {
             beforeEach(() => {
               // E is a hanging tail off of D in the loop A - D - A
-              state.graph.E = { status: Status.ANOMALOUS };
+              state.graph.E = { status: ComponentStatus.SUSPICIOUS };
               state.graph.D.dependencies = ["E", "A"];
             });
 

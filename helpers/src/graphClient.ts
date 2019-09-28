@@ -1,4 +1,4 @@
-import { ComponentCall, ServiceStatus, ComponentCallMetrics } from "./types";
+import { ComponentCall, ComponentStatus, ComponentCallMetrics } from "./types";
 import * as superagent from "superagent";
 
 interface Response<Body> extends superagent.Response {
@@ -9,7 +9,7 @@ type PromiseRes<Body> = Promise<Response<Body>>;
 interface Component {
   [componentId: string]: {
     dependencies: string[];
-    status: ServiceStatus;
+    status: ComponentStatus;
     metrics: ComponentCallMetrics;
   };
 }

@@ -1,4 +1,4 @@
-import { redis, logger } from "helpers";
+import { redis, logger, ComponentMetrics } from "helpers";
 
 const redisClient = redis.createClient();
 
@@ -31,12 +31,7 @@ export async function processRequest({ component, errored, timestamp, duration }
   logger.debug(`metrics set for key "${key}"`);
 }
 
-export interface Metrics {
-  throughput: number;
-  meanResponseTimeMs: number;
-  errorRate: number;
-}
-export async function getCurrent(component: string): Promise<Metrics> {
+export async function getCurrent(component: string): Promise<ComponentMetrics> {
   const key = await getKey(component, Date.now());
 
   const metrics = await (redisClient as any).hgetallAsync(key);
