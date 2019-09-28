@@ -6,4 +6,6 @@ IFS=$'\n\t'
 
 DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+cd helpers && npm run build && cd ..
+
 $DIR/commands/for-all-projects-do npm test
