@@ -30,11 +30,11 @@ describe("service", () => {
 
       expected = mapValues(
         {
-          A: { dependencies: ["B", "E"], status: "OK" },
-          B: { dependencies: [], status: "OK" },
-          C: { dependencies: [], status: "OK" },
-          D: { dependencies: [], status: "OK" },
-          E: { dependencies: ["B"], status: "OK" }
+          A: { dependencies: ["B", "E"], status: ComponentStatus.NORMAL },
+          B: { dependencies: [], status: ComponentStatus.NORMAL },
+          C: { dependencies: [], status: ComponentStatus.NORMAL },
+          D: { dependencies: [], status: ComponentStatus.NORMAL },
+          E: { dependencies: ["B"], status: ComponentStatus.NORMAL }
         },
         (component: any) =>
           Object.assign(component, { metrics: { throughput: 0, meanResponseTimeMs: 0, errorRate: 0 } })
@@ -54,7 +54,7 @@ describe("service", () => {
     const missingId = "MissingComponent";
 
     beforeEach(() => {
-      service.add({ caller: existingId });
+      service.add({ callee: existingId });
     });
 
     describe("when getting a component that does exist", () => {
@@ -89,7 +89,7 @@ describe("service", () => {
       it("should yield the expected root causes", () => {
         // test-case setup
         forEach(state.graph, ({ dependencies, status }: ComponentPlainObject, id: string) => {
-          service.add({ caller: id }); // insert component even if there are no deps
+          service.add({ callee: id }); // insert component even if there are no deps
           service.updateComponentStatus(id, status || ComponentStatus.NORMAL); // set status
           for (const depId of dependencies || []) {
             // insert dependencies (if there are some)
