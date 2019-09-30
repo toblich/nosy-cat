@@ -26,7 +26,6 @@
     "@types/kafkajs": "^1.8.2",
     "@types/redis": "^2.8.13",
     "@types/superagent": "^4.1.3",
-    "@types/winston": "^2.4.4",
     "@types/zipkin-instrumentation-express": "^0.11.2",
     "typescript": "^3.5.3"
   }
