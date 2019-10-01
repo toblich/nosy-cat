@@ -53,10 +53,8 @@ export async function getCurrent(component: string): Promise<ComponentMetrics> {
 
 // --- Helper functions ---
 
-const separator = ":";
-
 async function getKey(component: string, timestamp: number): Promise<string> {
   const date = new Date(timestamp);
   logger.debug(`Timestamp: ${timestamp}. Date: ${date}. Minutes: ${date.getMinutes()}`);
-  return `${component}${separator}${date.getMinutes()}`;
+  return `${component}:${date.getMinutes()}`;
 }
