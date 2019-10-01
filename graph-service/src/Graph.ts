@@ -48,7 +48,7 @@ class MissingComponent extends Component {
 
 // ---
 
-export interface GraphPlainObject {
+interface GraphPlainObject {
   [id: string]: ComponentPlainObject;
 }
 

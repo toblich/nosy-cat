@@ -7,12 +7,10 @@ import { ComponentStatus, ComponentPlainObject, ComponentCall, ComponentMetrics 
 
 let graph = new Graph();
 
-type ComponentWithMetrics = {
-  [k in keyof ComponentPlainObject]: ComponentPlainObject[k];
-} & { metrics?: ComponentMetrics };
-
 interface GraphDebugObject {
-  [id: string]: ComponentWithMetrics;
+  [id: string]: {
+    [k in keyof ComponentPlainObject]: ComponentPlainObject[k];
+  } & { metrics?: ComponentMetrics };
 }
 
 export async function toPlainObject(): Promise<GraphDebugObject> {
