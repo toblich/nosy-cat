@@ -51,27 +51,27 @@ jobs:
       - run: npm ci && npm run ci:install-all-projects
 
       - save_cache:
-          key: &root_cache
+          key: *root_cache
           paths:
             - node_modules
       - save_cache:
-          key: &ingress_cache
+          key: *ingress_cache
           paths:
             - ingress/node_modules
       - save_cache:
-          key: &helpers_cache
+          key: *helpers_cache
           paths:
             - helpers/node_modules
       - save_cache:
-          key: &dependency_detector_cache
+          key: *dependency_detector_cache
           paths:
             - dependency-detector/node_modules
       - save_cache:
-          key: &graph_service_cache
+          key: *graph_service_cache
           paths:
             - graph-service/node_modules
       - save_cache:
-          key: &anomaly_detector_cache
+          key: *anomaly_detector_cache
           paths:
             - anomaly-detector/node_modules
 
