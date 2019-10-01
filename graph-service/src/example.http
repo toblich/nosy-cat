@@ -16,3 +16,10 @@ content-type: application/json
     "timestamp": {{$timestamp}}000
   }
 }]
+
+###
+
+POST {{base}}/graph/search
+Content-Type: application/json
+
+{"component": "A"}
