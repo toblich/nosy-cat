@@ -48,7 +48,7 @@ jobs:
             - &anomaly_detector_cache anomaly_detector-v1-deps-{{ checksum "anomaly-detector/package.json" }}
             - anomaly_detector-v1-deps-
 
-      - run: npm ci && npm run ci:install-all-projects
+      - run: "([ -d node_modules ] || npm ci) && npm run ci:install-all-projects"
 
       - save_cache:
           key: *root_cache
