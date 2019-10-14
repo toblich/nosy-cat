@@ -1,15 +1,9 @@
-import { Dictionary } from "helpers";
-
-interface ServiceMetrics {
-  errorRate: number;
-  throughput: number;
-  responseTime: number;
-}
+import { Dictionary, ComponentMetrics } from "helpers";
 
 export enum MetricTypes {
   errorRate = "Error Rate",
   throughput = "Throughput",
-  responseTime = "Response Time"
+  meanResponseTimeMs = "Mean Response Time"
 }
 
-export type ServiceThresholds = Dictionary<ServiceMetrics>;
+export type ServiceThresholds = Dictionary<ComponentMetrics>;

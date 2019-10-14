@@ -34,7 +34,7 @@ async function processComponentCall(serviceValue: ComponentCall): Promise<void> 
 
   const serviceThresholds: ComponentMetrics = {
     errorRate: getServiceThreshold(serviceValue, MetricTypes.errorRate),
-    meanResponseTimeMs: getServiceThreshold(serviceValue, MetricTypes.responseTime),
+    meanResponseTimeMs: getServiceThreshold(serviceValue, MetricTypes.meanResponseTimeMs),
     throughput: getServiceThreshold(serviceValue, MetricTypes.throughput)
   };
 
@@ -87,7 +87,7 @@ function getServiceThreshold(value: ComponentCall, type: MetricTypes): number {
   if (!thresholds[value.callee]) {
     thresholds[value.callee] = {
       errorRate: 0.5,
-      responseTime: 1000,
+      meanResponseTimeMs: 1000,
       throughput: 1
     };
   }
