@@ -1,17 +1,9 @@
 import { consume } from "./kafka-integration";
-import {
-  logger,
-  createZipkinContextTracer,
-  ZipkinSpan,
-  ComponentCall,
-  IngressMessage,
-  GraphClient,
-  Producer
-} from "helpers";
+import { logger, createZipkinContextTracer, ZipkinSpan, ComponentCall, generateGraphClient, Producer } from "helpers";
 
 const { tracer } = createZipkinContextTracer("dependency-detector");
 
-const graphClient = new GraphClient(`http://localhost:${process.env.GRAPH_PORT || 6000}`);
+const graphClient = generateGraphClient(`http://localhost:${process.env.GRAPH_PORT || 6000}`);
 
 // ---
 

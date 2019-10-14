@@ -30,4 +30,6 @@ class GraphClient {
   }
 }
 
-export { GraphClient };
+const generateGraphClient = (url: string): GraphClient => new GraphClient(url);
+
+export { generateGraphClient };
