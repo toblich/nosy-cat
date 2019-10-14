@@ -3,7 +3,7 @@ import { flatMap, uniqBy, takeRightWhile } from "lodash";
 
 import { Graph } from "./Graph";
 import * as metricsRepository from "./metrics";
-import { ComponentStatus, ComponentPlainObject, ComponentCall, ComponentMetrics } from "helpers";
+import { Component, ComponentStatus, ComponentPlainObject, ComponentCall, ComponentMetrics } from "helpers";
 
 let graph = new Graph();
 
@@ -56,14 +56,16 @@ export async function add({ caller, callee, metrics }: ComponentCall): Promise<v
   }
 }
 
-export function getPlain(id: string): ComponentPlainObject {
+export async function search(id: string): Promise<Component> {
   const plain: ComponentPlainObject = graph.getComponent(id).toPlainObject();
 
   if (!plain) {
     throw new httpErrors.NotFound(`Component ${id} does not exist`);
   }
 
-  return plain;
+  const metrics = await metricsRepository.getCurrent(id);
+
+  return { ...plain, metrics };
 }
 
 export function findRootCauses(initialId: string): ComponentPlainObject[] {
