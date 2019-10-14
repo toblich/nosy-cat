@@ -49,7 +49,7 @@ describe("service", () => {
     });
   });
 
-  describe("#getPlain", () => {
+  describe("#search", () => {
     const existingId = "ExistingComponent";
     const missingId = "MissingComponent";
 
@@ -58,19 +58,26 @@ describe("service", () => {
     });
 
     describe("when getting a component that does exist", () => {
-      it("should return the component", () => {
-        const component = service.getPlain(existingId);
+      it("should return the component", async () => {
+        const component = await service.search(existingId);
         expect(component).toEqual({
           id: existingId,
           dependencies: [],
-          status: ComponentStatus.NORMAL
+          status: ComponentStatus.NORMAL,
+          metrics: {
+            // all metrics will be empty because the test does not set any particular values
+            errorRate: 0,
+            meanResponseTimeMs: 0,
+            throughput: 0
+          }
         });
       });
     });
 
     describe("when trying to get a component that does not exist", () => {
-      it("should throw a NotFound error", () => {
-        expect(() => service.getPlain(missingId)).toThrow(httpErrors.NotFound);
+      it("should throw a NotFound error", async () => {
+        expect.assertions(1);
+        await expect(service.search(missingId)).rejects.toBeInstanceOf(httpErrors.NotFound);
       });
     });
   });

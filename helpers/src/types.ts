@@ -56,6 +56,10 @@ export interface ComponentPlainObject {
   status: ComponentStatus;
 }
 
+export interface Component extends ComponentPlainObject {
+  metrics: ComponentMetrics;
+}
+
 export interface Dictionary<T> {
   [x: string]: T;
 }

@@ -13,8 +13,8 @@ export async function getGraphAsJson(_: EmptyReq, res: Response): Promise<void> 
   res.json(result);
 }
 
-export function searchComponent(req: ComponentIdReq, res: Response): void {
-  const component = service.getPlain(req.body.component);
+export async function searchComponent(req: ComponentIdReq, res: Response): Promise<void> {
+  const component = await service.search(req.body.component);
   res.json(component);
 }
 
