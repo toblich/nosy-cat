@@ -1,24 +1,11 @@
-// tslint:disable: max-classes-per-file
-
-export enum Status {
-  OK = "OK",
-  ANOMALOUS = "ANOMALOUS"
-}
-
-// ---
-
-export interface ComponentPlainObject {
-  id: string;
-  dependencies: string[];
-  status: Status;
-}
+import { ComponentStatus, ComponentPlainObject } from "helpers";
 
 class Component {
   public id: string;
   public dependencies: Set<string>;
-  public status: Status;
+  public status: ComponentStatus;
 
-  constructor(id: string, dependencies: Set<string> = new Set(), status: Status = Status.OK) {
+  constructor(id: string, dependencies: Set<string> = new Set(), status: ComponentStatus = ComponentStatus.NORMAL) {
     this.id = id;
     this.dependencies = dependencies;
     this.status = status;
@@ -61,7 +48,7 @@ class MissingComponent extends Component {
 
 // ---
 
-export interface GraphPlainObject {
+interface GraphPlainObject {
   [id: string]: ComponentPlainObject;
 }
 
