@@ -4,7 +4,7 @@ import {
   logger,
   createZipkinContextTracer,
   DependencyDetectionMessage,
-  GraphClient,
+  generateGraphClient,
   ComponentStatus,
   ComponentCall,
   Component,
@@ -12,30 +12,30 @@ import {
   Dictionary
 } from "helpers";
 import thresholds from "./thresholds";
-import { MetricTypes } from "./types";
+import { MetricTypes, Range, Metrics } from "./types";
 import { capitalize, mapValues } from "lodash";
 
 const { tracer } = createZipkinContextTracer("anomaly-detector");
 
 consume(tracer, "dependency-detector", onEveryMessage);
 
-const graphClient = new GraphClient(`http://localhost:${process.env.GRAPH_PORT || 6000}`);
+const graphClient = generateGraphClient(`http://localhost:${process.env.GRAPH_PORT || 6000}`);
 
 // ---
 
-function getErrorsByMetric(serviceThresholds: ComponentMetrics, service: Component): Dictionary<boolean> {
+function getErrorsByMetric(serviceThresholds: Metrics, service: Component): Dictionary<boolean> {
   return mapValues(serviceThresholds, (_: any, metricKey: string): boolean =>
     metricHasAnomaly(serviceThresholds[metricKey], service.metrics[metricKey])
   );
 }
 
-async function processComponentCall(serviceValue: ComponentCall): Promise<void> {
+export async function processComponentCall(serviceValue: ComponentCall): Promise<void> {
   const component = (await graphClient.getService(serviceValue.callee)).body;
 
-  const serviceThresholds: ComponentMetrics = {
-    errorRate: getServiceThreshold(serviceValue, MetricTypes.errorRate),
-    meanResponseTimeMs: getServiceThreshold(serviceValue, MetricTypes.meanResponseTimeMs),
-    throughput: getServiceThreshold(serviceValue, MetricTypes.throughput)
+  const serviceThresholds: Metrics = {
+    errorRate: getServiceThreshold(serviceValue, "errorRate"),
+    meanResponseTimeMs: getServiceThreshold(serviceValue, "meanResponseTimeMs"),
+    throughput: getServiceThreshold(serviceValue, "throughput")
   };
 
   const errorsByMetric = getErrorsByMetric(serviceThresholds, component);
@@ -46,10 +46,15 @@ async function processComponentCall(serviceValue: ComponentCall): Promise<void> 
 
   if (serviceIsBackToNormal) {
     await graphClient.updateServiceMetrics(component.id, ComponentStatus.NORMAL);
-    return;
   }
 
   if (!serviceHasAnError) {
+    return;
+  }
+
+  const serviceIsStillAnomalous = isServiceAnomalous(component.status) && serviceHasAnError;
+
+  if (serviceIsStillAnomalous) {
     return;
   }
 
@@ -83,20 +88,23 @@ async function onEveryMessage({
   await Promise.all(componentCalls.map(processComponentCall));
 }
 
-function getServiceThreshold(value: ComponentCall, type: MetricTypes): number {
+function getServiceThreshold(value: ComponentCall, type: keyof Metrics): Range {
   if (!thresholds[value.callee]) {
     thresholds[value.callee] = {
-      errorRate: 0.5,
-      meanResponseTimeMs: 1000,
-      throughput: 1
+      errorRate: { minimum: 0, maximum: 0.5 },
+      meanResponseTimeMs: { minimum: 0, maximum: 1200 },
+      throughput: {
+        minimum: 0.8,
+        maximum: 1.2
+      }
     };
   }
 
   return thresholds[value.callee][type];
 }
 
-function metricHasAnomaly(threshold: number, value: number): boolean {
-  return value > threshold;
+function metricHasAnomaly(threshold: Range, value: number): boolean {
+  return value < threshold.minimum || value > threshold.maximum;
 }
 
 function isServiceAnomalous(componentStatus: ComponentStatus): boolean {
