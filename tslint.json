@@ -8,7 +8,8 @@
     "member-ordering": false,
     "ordered-imports": false,
     "no-unused-variable": true,
-    "typedef": [true, "call-signature", "arrow-call-signature", "parameter", "arrow-parameter"]
+    "typedef": [true, "call-signature", "arrow-call-signature", "parameter", "arrow-parameter"],
+    "max-classes-per-file": false
   },
   "rulesDirectory": [],
   "linterOptions": {}

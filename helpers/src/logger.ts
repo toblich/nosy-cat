@@ -33,9 +33,13 @@ const logger = winston.createLogger({
   format: winston.format.combine(
     winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     winston.format.colorize(),
-    winston.format.printf(info => `${info.timestamp} - ${info.level}: ${info.message}`)
+    winston.format.printf((info: winston.LogEntry) => `${info.timestamp} - ${info.level}: ${info.message}`)
   ),
-  transports: [new winston.transports.Console()],
+  transports: [
+    new winston.transports.Console({
+      level: process.env.LOG || (process.env.NODE_ENV === "test" ? "error" : "debug")
+    })
+  ],
   level: "custom"
 });
 

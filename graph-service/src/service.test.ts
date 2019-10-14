@@ -1,16 +1,25 @@
+import * as redisMock from "redis-mock";
+import { promisifyAll } from "bluebird";
+import { redis, ComponentStatus, ComponentPlainObject } from "helpers";
+
+promisifyAll(redisMock.RedisClient.prototype);
+promisifyAll(redisMock.Multi.prototype);
+
+const mock = jest.spyOn(redis, "createClient").mockImplementation((...args: any) => redisMock.createClient(...args));
+
 import * as httpErrors from "http-errors";
-import { forEach } from "lodash";
+import { forEach, mapValues } from "lodash";
 import * as service from "./service";
-import { Status, ComponentPlainObject } from "./Graph";
 
 describe("service", () => {
   beforeEach(service.clear);
+  beforeEach(() => mock.mockClear());
 
   describe("a complete case", () => {
     let toAdd;
     let expected;
 
-    beforeEach(() => {
+    beforeEach(async () => {
       toAdd = [
         { caller: "A", callee: "B" },
         { caller: "C" },
@@ -19,19 +28,24 @@ describe("service", () => {
         { caller: "E", callee: "B" }
       ];
 
-      expected = {
-        A: { dependencies: ["B", "E"], status: "OK" },
-        B: { dependencies: [], status: "OK" },
-        C: { dependencies: [], status: "OK" },
-        D: { dependencies: [], status: "OK" },
-        E: { dependencies: ["B"], status: "OK" }
-      };
+      expected = mapValues(
+        {
+          A: { dependencies: ["B", "E"], status: ComponentStatus.NORMAL },
+          B: { dependencies: [], status: ComponentStatus.NORMAL },
+          C: { dependencies: [], status: ComponentStatus.NORMAL },
+          D: { dependencies: [], status: ComponentStatus.NORMAL },
+          E: { dependencies: ["B"], status: ComponentStatus.NORMAL }
+        },
+        (component: any) =>
+          Object.assign(component, { metrics: { throughput: 0, meanResponseTimeMs: 0, errorRate: 0 } })
+      );
 
-      toAdd.forEach(service.add);
+      toAdd.forEach(async (componentCall: any) => await service.add(componentCall));
     });
 
-    it("should deep equal the expected graph", () => {
-      expect(service.toPlainObject()).toEqual(expected);
+    it("should deep equal the expected graph", async () => {
+      const result = await service.toPlainObject();
+      expect(result).toEqual(expected);
     });
   });
 
@@ -40,7 +54,7 @@ describe("service", () => {
     const missingId = "MissingComponent";
 
     beforeEach(() => {
-      service.add({ caller: existingId });
+      service.add({ callee: existingId });
     });
 
     describe("when getting a component that does exist", () => {
@@ -49,7 +63,7 @@ describe("service", () => {
         expect(component).toEqual({
           id: existingId,
           dependencies: [],
-          status: Status.OK
+          status: ComponentStatus.NORMAL
         });
       });
     });
@@ -64,7 +78,7 @@ describe("service", () => {
   describe("#findRootCauses", () => {
     interface GraphPlainPartialObject {
       graph: {
-        [id: string]: { dependencies?: string[]; status?: Status };
+        [id: string]: { dependencies?: string[]; status?: ComponentStatus };
       };
     }
     function findRootCauseTest(
@@ -75,8 +89,8 @@ describe("service", () => {
       it("should yield the expected root causes", () => {
         // test-case setup
         forEach(state.graph, ({ dependencies, status }: ComponentPlainObject, id: string) => {
-          service.add({ caller: id }); // insert component even if there are no deps
-          service.updateComponentStatus(id, status || Status.OK); // set status
+          service.add({ callee: id }); // insert component even if there are no deps
+          service.updateComponentStatus(id, status || ComponentStatus.NORMAL); // set status
           for (const depId of dependencies || []) {
             // insert dependencies (if there are some)
             service.add({ caller: id, callee: depId });
@@ -109,7 +123,7 @@ describe("service", () => {
 
       beforeEach(() => {
         state.graph = {
-          A: { status: Status.ANOMALOUS }
+          A: { status: ComponentStatus.SUSPICIOUS }
         };
       });
 
@@ -127,12 +141,12 @@ describe("service", () => {
         beforeEach(() => {
           state.graph = {
             A: {
-              status: Status.ANOMALOUS,
+              status: ComponentStatus.SUSPICIOUS,
               dependencies: ["B", "C", "D"]
             },
-            B: { status: Status.ANOMALOUS },
+            B: { status: ComponentStatus.SUSPICIOUS },
             C: {},
-            D: { status: Status.ANOMALOUS }
+            D: { status: ComponentStatus.SUSPICIOUS }
           };
         });
 
@@ -140,7 +154,7 @@ describe("service", () => {
 
         describe("and some of them have broken dependencies", () => {
           beforeEach(() => {
-            state.graph.E = { status: Status.ANOMALOUS };
+            state.graph.E = { status: ComponentStatus.SUSPICIOUS };
             state.graph.D.dependencies = ["E"];
           });
 
@@ -162,11 +176,11 @@ describe("service", () => {
               // F is a hanging tail off of D, the loop is A - D - E - A
               state.graph.D.dependencies = ["E", "F"];
               state.graph.E = {
-                status: Status.ANOMALOUS,
+                status: ComponentStatus.SUSPICIOUS,
                 dependencies: ["A"]
               };
               state.graph.F = {
-                status: Status.ANOMALOUS
+                status: ComponentStatus.SUSPICIOUS
               };
             });
 
@@ -175,7 +189,7 @@ describe("service", () => {
           describe("with a hanging tail at the end", () => {
             beforeEach(() => {
               // E is a hanging tail off of D in the loop A - D - A
-              state.graph.E = { status: Status.ANOMALOUS };
+              state.graph.E = { status: ComponentStatus.SUSPICIOUS };
               state.graph.D.dependencies = ["E", "A"];
             });
 

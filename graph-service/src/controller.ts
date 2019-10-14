@@ -1,41 +1,30 @@
-import { Request, Response, NextFunction } from "express";
-import { Status } from "./Graph";
+import { Response } from "express";
+import { logger, ComponentIdReq, UpdateComponentStatusReq, AddComponentsReq, EmptyReq, ComponentCall } from "helpers";
 import * as service from "./service";
 import { logger } from "helpers";
 
-interface Body<T> extends Request {
-  body: T;
-}
-
-interface ComponentBody {
-  component: string;
-}
-
-interface UpdateStatusBody {
-  component: string;
-  status: Status;
-}
-
-export function addComponentsAndDependencies(req: Body<service.ComponentCall[]>, res: Response): void {
-  req.body.map(service.add);
+export async function addComponentsAndDependencies(req: AddComponentsReq, res: Response): Promise<void> {
+  await Promise.all(req.body.map((component: ComponentCall) => service.add(component)));
   res.status(201).send();
 }
 
-export function getGraphAsJson(_: Request, res: Response): void {
-  res.json(service.toPlainObject());
+export async function getGraphAsJson(_: EmptyReq, res: Response): Promise<void> {
+  const result = await service.toPlainObject();
+  logger.debug(`Got result ${JSON.stringify(result, null, 4)}`);
+  res.json(result);
 }
 
-export function searchComponent(req: Body<ComponentBody>, res: Response): void {
+export function searchComponent(req: ComponentIdReq, res: Response): void {
   const component = service.getPlain(req.body.component);
   res.json(component);
 }
 
-export function findRootCauses(req: Body<ComponentBody>, res: Response): void {
+export function findRootCauses(req: ComponentIdReq, res: Response): void {
   const causes = service.findRootCauses(req.body.component);
   res.json(causes);
 }
 
-export function updateComponentStatus(req: Body<UpdateStatusBody>, res: Response): void {
+export function updateComponentStatus(req: UpdateComponentStatusReq, res: Response): void {
   const { component, status } = req.body;
   service.updateComponentStatus(component, status);
   res.status(200).send();
