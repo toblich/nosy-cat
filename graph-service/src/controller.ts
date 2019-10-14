@@ -1,7 +1,6 @@
 import { Response } from "express";
 import { logger, ComponentIdReq, UpdateComponentStatusReq, AddComponentsReq, EmptyReq, ComponentCall } from "helpers";
 import * as service from "./service";
-import { logger } from "helpers";
 
 export async function addComponentsAndDependencies(req: AddComponentsReq, res: Response): Promise<void> {
   await Promise.all(req.body.map((component: ComponentCall) => service.add(component)));

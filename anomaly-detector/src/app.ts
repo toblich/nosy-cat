@@ -5,8 +5,11 @@ import {
   createZipkinContextTracer,
   DependencyDetectionMessage,
   GraphClient,
-  ServiceStatus,
-  ComponentCall
+  ComponentStatus,
+  ComponentCall,
+  Component,
+  ComponentMetrics,
+  Dictionary
 } from "helpers";
 import thresholds from "./thresholds";
 import { MetricTypes } from "./types";
@@ -20,35 +23,50 @@ const graphClient = new GraphClient(`http://localhost:${process.env.GRAPH_PORT |
 
 // ---
 
-async function processComponentCall(serviceValue: ComponentCall): Promise<void> {
-  const service = await graphClient.getService(serviceValue.callee);
+function getErrorsByMetric(serviceThresholds: ComponentMetrics, service: Component): Dictionary<boolean> {
+  return mapValues(serviceThresholds, (_: any, metricKey: string): boolean =>
+    metricHasAnomaly(serviceThresholds[metricKey], service.metrics[metricKey])
+  );
+}
 
-  const serviceThresholds = {
+async function processComponentCall(serviceValue: ComponentCall): Promise<void> {
+  const component = (await graphClient.getService(serviceValue.callee)).body;
+
+  const serviceThresholds: ComponentMetrics = {
     errorRate: getServiceThreshold(serviceValue, MetricTypes.errorRate),
-    responseTime: getServiceThreshold(serviceValue, MetricTypes.responseTime),
+    meanResponseTimeMs: getServiceThreshold(serviceValue, MetricTypes.responseTime),
     throughput: getServiceThreshold(serviceValue, MetricTypes.throughput)
   };
 
-  if (isServiceAnomalous(service.body)) {
-    return checkIfServiceIsBackToNormal();
-  }
+  const errorsByMetric = getErrorsByMetric(serviceThresholds, component);
 
-  const errorsByMetric = mapValues(serviceThresholds, (_: any, metricKey: string): boolean =>
-    metricHasAnomaly(serviceThresholds[metricKey], 1)
-  );
+  const serviceHasAnError = Object.keys(errorsByMetric).some((metricKey: string) => errorsByMetric[metricKey]);
 
-  const hasError = Object.keys(errorsByMetric).some((metricKey: string) => errorsByMetric[metricKey]);
+  const serviceIsBackToNormal = isServiceAnomalous(component.status) && !serviceHasAnError;
 
-  if (!hasError) {
+  if (serviceIsBackToNormal) {
+    await graphClient.updateServiceMetrics(component.id, ComponentStatus.NORMAL);
     return;
   }
 
-  const errorMessages = mapValues(
-    errorsByMetric,
-    (metricHasError: boolean, metricKey: string): string =>
-      metricHasError &&
-      getMetricErrorMessage(MetricTypes[metricKey], 1, serviceThresholds[metricKey], (service as any).name)
-  );
+  if (!serviceHasAnError) {
+    return;
+  }
+
+  // TODO: Add external alert
+  // const errorMessages = mapValues(
+  //   errorsByMetric,
+  //   (metricHasError: boolean, metricKey: string): string =>
+  //     metricHasError &&
+  //     getMetricErrorMessage(
+  //       MetricTypes[metricKey],
+  //       component.metrics[metricKey],
+  //       serviceThresholds[metricKey],
+  //       serviceValue.callee
+  //     )
+  // );
+
+  await graphClient.updateServiceMetrics(component.id, ComponentStatus.CONFIRMED);
 }
 
 async function onEveryMessage({
@@ -62,13 +80,7 @@ async function onEveryMessage({
 
   const componentCalls: ComponentCall[] = message.value;
 
-  const promises = componentCalls.map(processComponentCall);
-
-  await Promise.all(promises);
-}
-
-function checkIfServiceIsBackToNormal(): void {
-  return;
+  await Promise.all(componentCalls.map(processComponentCall));
 }
 
 function getServiceThreshold(value: ComponentCall, type: MetricTypes): number {
@@ -87,8 +99,8 @@ function metricHasAnomaly(threshold: number, value: number): boolean {
   return value > threshold;
 }
 
-function isServiceAnomalous(serviceStatus: ServiceStatus): boolean {
-  return [ServiceStatus.CONFIRMED, ServiceStatus.PERPETRATOR, ServiceStatus.VICTIM].includes(serviceStatus);
+function isServiceAnomalous(componentStatus: ComponentStatus): boolean {
+  return [ComponentStatus.CONFIRMED, ComponentStatus.PERPETRATOR, ComponentStatus.VICTIM].includes(componentStatus);
 }
 
 function getMetricErrorMessage(type: MetricTypes, value: number, threshold: number, serviceName: string): string {
