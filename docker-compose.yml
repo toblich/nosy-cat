@@ -1,6 +1,25 @@
 version: "2"
 
 services:
+  ingress:
+    build:
+      context: .
+      dockerfile: ingress.dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - "./nodemon.json:/project/nodemon.json"
+      - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+      - "./helpers/declarations:/project/helpers/declarations"
+      - "./helpers/src:/project/helpers/src"
+      - "./ingress/tsconfig.json:/project/ingress/tsconfig.json"
+      - "./ingress/src:/project/app/src"
+    command: npm run start:dockerized
+    links:
+      - kafka
+    environment:
+      KAFKA: kafka:9093
+
   zookeeper:
     image: wurstmeister/zookeeper
     expose:

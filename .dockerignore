@@ -1,0 +1,8 @@
+*
+
+!helpers/declarations
+!helpers/src
+!helpers/*.json
+
+!ingress/src
+!ingress/*.json
