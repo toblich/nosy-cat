@@ -42,7 +42,7 @@ export async function processComponentCall(serviceValue: ComponentCall): Promise
 
   const serviceHasAnError = Object.keys(errorsByMetric).some((metricKey: string) => errorsByMetric[metricKey]);
 
-  const serviceIsBackToNormal = isServiceAnomalous(component.status) && !serviceHasAnError;
+  const serviceIsBackToNormal = wasServiceAnomalous(component.status) && !serviceHasAnError;
 
   if (serviceIsBackToNormal) {
     await graphClient.updateServiceMetrics(component.id, ComponentStatus.NORMAL);
@@ -52,7 +52,7 @@ export async function processComponentCall(serviceValue: ComponentCall): Promise
     return;
   }
 
-  const serviceIsStillAnomalous = isServiceAnomalous(component.status) && serviceHasAnError;
+  const serviceIsStillAnomalous = wasServiceAnomalous(component.status) && serviceHasAnError;
 
   if (serviceIsStillAnomalous) {
     return;
@@ -107,7 +107,7 @@ function metricHasAnomaly(threshold: Range, value: number): boolean {
   return value < threshold.minimum || value > threshold.maximum;
 }
 
-function isServiceAnomalous(componentStatus: ComponentStatus): boolean {
+function wasServiceAnomalous(componentStatus: ComponentStatus): boolean {
   return [ComponentStatus.CONFIRMED, ComponentStatus.PERPETRATOR, ComponentStatus.VICTIM].includes(componentStatus);
 }
 
