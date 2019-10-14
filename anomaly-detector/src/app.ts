@@ -24,8 +24,8 @@ const graphClient = generateGraphClient(`http://localhost:${process.env.GRAPH_PO
 // ---
 
 function getErrorsByMetric(serviceThresholds: Metrics, service: Component): Dictionary<boolean> {
-  return mapValues(serviceThresholds, (_: any, metricKey: string): boolean =>
-    metricHasAnomaly(serviceThresholds[metricKey], service.metrics[metricKey])
+  return mapValues(serviceThresholds, (threshold: Range, metricKey: string): boolean =>
+    metricHasAnomaly(threshold, service.metrics[metricKey])
   );
 }
 
