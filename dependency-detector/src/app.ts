@@ -3,7 +3,9 @@ import { logger, createZipkinContextTracer, ZipkinSpan, ComponentCall, generateG
 
 const { tracer } = createZipkinContextTracer("dependency-detector");
 
-const graphClient = generateGraphClient(`http://localhost:${process.env.GRAPH_PORT || 6000}`);
+const graphClient = generateGraphClient(
+  `http://${process.env.GRAPH_HOST || "localhost"}:${process.env.GRAPH_PORT || 6000}`
+);
 
 // ---
 

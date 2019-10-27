@@ -1,6 +1,100 @@
-version: "2"
+version: "3.7"
+
+# Using base extension fields to avoid extra repetition
+# See https://docs.docker.com/compose/compose-file/#extension-fields for details
+
+x-base-build: &base-build
+  context: .
+  dockerfile: service.dockerfile
+
+x-base-command: &base-command npm run start:dockerized
+
+x-base-environment: &base-environment
+  KAFKA: kafka:9093
+  REDIS_HOST: redis
+  GRAPH_HOST: graph-service
+
+
+############
+# SERVICES #
+############
 
 services:
+  ingress:
+    build:
+      <<: *base-build
+      args:
+        - SERVICE=ingress
+    ports:
+      - "3000:3000"
+    volumes:
+      - "./nodemon.json:/project/nodemon.json"
+      - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+      - "./helpers/declarations:/project/helpers/declarations"
+      - "./helpers/src:/project/helpers/src"
+      - "./ingress/tsconfig.json:/project/app/tsconfig.json"
+      - "./ingress/src:/project/app/src"
+    links:
+      - kafka
+    command: *base-command
+    environment: *base-environment
+
+  dependency-detector:
+    build:
+      <<: *base-build
+      args:
+        - SERVICE=dependency-detector
+    volumes:
+      - "./nodemon.json:/project/nodemon.json"
+      - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+      - "./helpers/declarations:/project/helpers/declarations"
+      - "./helpers/src:/project/helpers/src"
+      - "./dependency-detector/tsconfig.json:/project/app/tsconfig.json"
+      - "./dependency-detector/src:/project/app/src"
+    command: *base-command
+    links:
+      - graph-service
+      - kafka
+    environment: *base-environment
+
+  anomaly-detector:
+    build:
+      <<: *base-build
+      args:
+        - SERVICE=anomaly-detector
+    volumes:
+      - "./nodemon.json:/project/nodemon.json"
+      - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+      - "./helpers/declarations:/project/helpers/declarations"
+      - "./helpers/src:/project/helpers/src"
+      - "./anomaly-detector/tsconfig.json:/project/app/tsconfig.json"
+      - "./anomaly-detector/src:/project/app/src"
+    command: *base-command
+    links:
+      - graph-service
+      - kafka
+    environment: *base-environment
+
+  graph-service:
+    build:
+      <<: *base-build
+      args:
+        - SERVICE=graph-service
+    ports:
+      - "6000:6000"
+    volumes:
+      - "./nodemon.json:/project/nodemon.json"
+      - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+      - "./helpers/declarations:/project/helpers/declarations"
+      - "./helpers/src:/project/helpers/src"
+      - "./graph-service/tsconfig.json:/project/app/tsconfig.json"
+      - "./graph-service/src:/project/app/src"
+    command: *base-command
+    links:
+      - redis
+    environment:
+      <<: *base-environment
+
   zookeeper:
     image: wurstmeister/zookeeper
     expose:

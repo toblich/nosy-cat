@@ -5,7 +5,7 @@ import instrumentKafkaJs = require("zipkin-instrumentation-kafkajs");
 const kafka = (tracer: Tracer): Kafka.Kafka => {
   return instrumentKafkaJs(
     new Kafka.Kafka({
-      brokers: ["localhost:9092"]
+      brokers: [process.env.KAFKA || "localhost:9092"]
     }),
     {
       tracer,

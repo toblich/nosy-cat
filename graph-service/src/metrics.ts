@@ -1,6 +1,8 @@
 import { redis, logger, ComponentMetrics } from "helpers";
 
-const redisClient = redis.createClient();
+const redisClient = redis.createClient({
+  host: process.env.REDIS_HOST || "localhost"
+});
 
 const fields = {
   THROUGHPUT: "throughput",
