@@ -6,9 +6,6 @@ x-base-build: &base-build
 
 x-base-command: &base-command npm run start:dockerized
 
-x-base-links: &base-links
-  - kafka
-
 x-base-environment: &base-environment
   KAFKA: kafka:9093
 
@@ -27,8 +24,9 @@ services:
       - "./helpers/src:/project/helpers/src"
       - "./ingress/tsconfig.json:/project/app/tsconfig.json"
       - "./ingress/src:/project/app/src"
+    links:
+      - kafka
     command: *base-command
-    links: *base-links
     environment: *base-environment
 
   dependency-detector:
@@ -44,8 +42,45 @@ services:
       - "./dependency-detector/tsconfig.json:/project/app/tsconfig.json"
       - "./dependency-detector/src:/project/app/src"
     command: *base-command
-    links: *base-links
+    links:
+      - kafka
     environment: *base-environment
+
+  anomaly-detector:
+    build:
+      <<: *base-build
+      args:
+        - SERVICE=anomaly-detector
+    volumes:
+      - "./nodemon.json:/project/nodemon.json"
+      - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+      - "./helpers/declarations:/project/helpers/declarations"
+      - "./helpers/src:/project/helpers/src"
+      - "./anomaly-detector/tsconfig.json:/project/app/tsconfig.json"
+      - "./anomaly-detector/src:/project/app/src"
+    command: *base-command
+    links:
+      - kafka
+    environment: *base-environment
+
+  graph-service:
+    build:
+      <<: *base-build
+      args:
+        - SERVICE=graph-service
+    volumes:
+      - "./nodemon.json:/project/nodemon.json"
+      - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+      - "./helpers/declarations:/project/helpers/declarations"
+      - "./helpers/src:/project/helpers/src"
+      - "./graph-service/tsconfig.json:/project/app/tsconfig.json"
+      - "./graph-service/src:/project/app/src"
+    command: *base-command
+    links:
+      - redis
+    environment:
+      <<: *base-environment
+      REDIS_HOST: redis
 
   zookeeper:
     image: wurstmeister/zookeeper

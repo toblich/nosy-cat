@@ -9,3 +9,9 @@
 
 !dependency-detector/src
 !dependency-detector/*.json
+
+!anomaly-detector/src
+!anomaly-detector/*.json
+
+!graph-service/src
+!graph-service/*.json

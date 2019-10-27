@@ -6,6 +6,8 @@
   "scripts": {
     "start": "nodemon --config ../nodemon.json --exec 'ts-node' .",
     "build": "tsc -p .",
+    "build-helpers": "cd ../helpers && npm run build && cd -",
+    "start:dockerized": "npm run build-helpers && npm run start",
     "start:prod": "node ./build/app.js",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose"
   },
