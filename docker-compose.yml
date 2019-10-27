@@ -8,6 +8,8 @@ x-base-command: &base-command npm run start:dockerized
 
 x-base-environment: &base-environment
   KAFKA: kafka:9093
+  REDIS_HOST: redis
+  GRAPH_HOST: graph-service
 
 ####
 
@@ -17,6 +19,8 @@ services:
       <<: *base-build
       args:
         - SERVICE=ingress
+    ports:
+      - "3000:3000"
     volumes:
       - "./nodemon.json:/project/nodemon.json"
       - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
@@ -43,6 +47,7 @@ services:
       - "./dependency-detector/src:/project/app/src"
     command: *base-command
     links:
+      - graph-service
       - kafka
     environment: *base-environment
 
@@ -60,6 +65,7 @@ services:
       - "./anomaly-detector/src:/project/app/src"
     command: *base-command
     links:
+      - graph-service
       - kafka
     environment: *base-environment
 
@@ -68,6 +74,8 @@ services:
       <<: *base-build
       args:
         - SERVICE=graph-service
+    ports:
+      - "6000:6000"
     volumes:
       - "./nodemon.json:/project/nodemon.json"
       - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
@@ -80,7 +88,6 @@ services:
       - redis
     environment:
       <<: *base-environment
-      REDIS_HOST: redis
 
   zookeeper:
     image: wurstmeister/zookeeper
