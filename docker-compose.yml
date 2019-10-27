@@ -1,24 +1,51 @@
-version: "2"
+version: "3.7"
+
+x-base-build: &base-build
+  context: .
+  dockerfile: service.dockerfile
+
+x-base-command: &base-command npm run start:dockerized
+
+x-base-links: &base-links
+  - kafka
+
+x-base-environment: &base-environment
+  KAFKA: kafka:9093
+
+####
 
 services:
   ingress:
     build:
-      context: .
-      dockerfile: ingress.dockerfile
-    ports:
-      - "3000:3000"
+      <<: *base-build
+      args:
+        - SERVICE=ingress
     volumes:
       - "./nodemon.json:/project/nodemon.json"
       - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
       - "./helpers/declarations:/project/helpers/declarations"
       - "./helpers/src:/project/helpers/src"
-      - "./ingress/tsconfig.json:/project/ingress/tsconfig.json"
+      - "./ingress/tsconfig.json:/project/app/tsconfig.json"
       - "./ingress/src:/project/app/src"
-    command: npm run start:dockerized
-    links:
-      - kafka
-    environment:
-      KAFKA: kafka:9093
+    command: *base-command
+    links: *base-links
+    environment: *base-environment
+
+  dependency-detector:
+    build:
+      <<: *base-build
+      args:
+        - SERVICE=dependency-detector
+    volumes:
+      - "./nodemon.json:/project/nodemon.json"
+      - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+      - "./helpers/declarations:/project/helpers/declarations"
+      - "./helpers/src:/project/helpers/src"
+      - "./dependency-detector/tsconfig.json:/project/app/tsconfig.json"
+      - "./dependency-detector/src:/project/app/src"
+    command: *base-command
+    links: *base-links
+    environment: *base-environment
 
   zookeeper:
     image: wurstmeister/zookeeper

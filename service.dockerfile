@@ -16,7 +16,8 @@ RUN mkdir -p /project/helpers
 RUN mkdir -p /project/app
 WORKDIR /project/app
 
-COPY ./ingress/package*.json ./
+ARG SERVICE
+COPY ./${SERVICE}/package*.json ./
 
 RUN npm i
 

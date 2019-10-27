@@ -6,3 +6,6 @@
 
 !ingress/src
 !ingress/*.json
+
+!dependency-detector/src
+!dependency-detector/*.json
