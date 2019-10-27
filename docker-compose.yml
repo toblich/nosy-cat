@@ -14,7 +14,6 @@ x-base-environment: &base-environment
   REDIS_HOST: redis
   GRAPH_HOST: graph-service
 
-
 ############
 # SERVICES #
 ############
@@ -123,3 +122,24 @@ services:
     links:
       - redis
     command: redis-cli -h redis
+
+  pulsar:
+    image: apachepulsar/pulsar
+    expose:
+      - 8080
+      - 6650
+    environment:
+      - PULSAR_MEM=" -Xms512m -Xmx512m -XX:MaxDirectMemorySize=1g"
+    command: >
+      /bin/bash -c
+      "bin/apply-config-from-env.py conf/pulsar.conf
+      && bin/pulsar pulsar"
+
+  pulsar-dashboard:
+    image: apachepulsar/pulsar-dashboard
+    depends_on:
+      - pulsar
+    ports:
+      - "80:80"
+    environment:
+      - SERVICE_URL=http://standalone:8080

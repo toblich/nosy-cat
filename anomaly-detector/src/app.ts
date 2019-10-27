@@ -8,12 +8,12 @@ import {
   ComponentStatus,
   ComponentCall,
   Component,
-  ComponentMetrics,
   Dictionary
 } from "helpers";
 import thresholds from "./thresholds";
 import { MetricTypes, Range, Metrics } from "./types";
 import { capitalize, mapValues } from "lodash";
+import { PulsarProducer } from "./pulsar";
 
 const { tracer } = createZipkinContextTracer("anomaly-detector");
 
@@ -31,7 +31,7 @@ function getErrorsByMetric(serviceThresholds: Metrics, service: Component): Dict
   );
 }
 
-export async function processComponentCall(serviceValue: ComponentCall): Promise<void> {
+export async function processComponentCall(producer: PulsarProducer, serviceValue: ComponentCall): Promise<void> {
   const component = (await graphClient.getService(serviceValue.callee)).body;
 
   const serviceThresholds: Metrics = {
@@ -61,33 +61,44 @@ export async function processComponentCall(serviceValue: ComponentCall): Promise
   }
 
   // TODO: Add external alert
-  // const errorMessages = mapValues(
-  //   errorsByMetric,
-  //   (metricHasError: boolean, metricKey: string): string =>
-  //     metricHasError &&
-  //     getMetricErrorMessage(
-  //       MetricTypes[metricKey],
-  //       component.metrics[metricKey],
-  //       serviceThresholds[metricKey],
-  //       serviceValue.callee
-  //     )
-  // );
+  const errorMessages = mapValues(
+    errorsByMetric,
+    (metricHasError: boolean, metricKey: string): string =>
+      metricHasError &&
+      getMetricErrorMessage(
+        MetricTypes[metricKey],
+        component.metrics[metricKey],
+        serviceThresholds[metricKey],
+        serviceValue.callee
+      )
+  );
+
+  producer.send({
+    data: Buffer.from("HOLAAAAA")
+  });
+
+  await producer.flush();
 
   await graphClient.updateServiceMetrics(component.id, ComponentStatus.CONFIRMED);
 }
 
-async function onEveryMessage({
-  partition,
-  message
-}: {
-  partition: any;
-  message: DependencyDetectionMessage;
-}): Promise<void> {
+async function onEveryMessage(
+  producer: PulsarProducer,
+  {
+    partition,
+    message
+  }: {
+    partition: any;
+    message: DependencyDetectionMessage;
+  }
+): Promise<void> {
   logger.info(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
   const componentCalls: ComponentCall[] = message.value;
 
-  await Promise.all(componentCalls.map(processComponentCall));
+  await Promise.all(
+    componentCalls.map((componentCall: ComponentCall) => processComponentCall(producer, componentCall))
+  );
 }
 
 function getServiceThreshold(value: ComponentCall, type: keyof Metrics): Range {

@@ -1,15 +1,23 @@
 import { kafkaWrapper, logger } from "helpers";
 import { Tracer } from "zipkin";
+import { getPulsarProducer, PulsarProducer } from "./pulsar";
+
+const onEachMessageFactory = (
+  producer: PulsarProducer,
+  onEachMessage: (...args: any) => Promise<void>
+): ((...args: any) => Promise<void>) => (...args: any): Promise<void> => onEachMessage(producer, args);
 
 export async function consume(
   tracer: Tracer,
   topic: string,
-  onEachMessage: (arg: any) => Promise<void>
+  onEachMessage: (...args: any) => Promise<void>
 ): Promise<void> {
   logger.debug("entered consume");
 
   try {
     const kafka = await kafkaWrapper(tracer, "anomaly-detector");
+
+    const pulsarProducer = await getPulsarProducer("component-alerts");
 
     const consumer = await kafka.consumer;
 
@@ -20,7 +28,7 @@ export async function consume(
     logger.debug(`processing messages from topic "${topic}"...`);
 
     await consumer.run({
-      eachMessage: onEachMessage
+      eachMessage: onEachMessageFactory(pulsarProducer, onEachMessage)
     });
   } catch (err) {
     logger.error(err);
