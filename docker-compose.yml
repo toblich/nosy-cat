@@ -1,5 +1,8 @@
 version: "3.7"
 
+# Using base extension fields to avoid extra repetition
+# See https://docs.docker.com/compose/compose-file/#extension-fields for details
+
 x-base-build: &base-build
   context: .
   dockerfile: service.dockerfile
@@ -11,7 +14,10 @@ x-base-environment: &base-environment
   REDIS_HOST: redis
   GRAPH_HOST: graph-service
 
-####
+
+############
+# SERVICES #
+############
 
 services:
   ingress:
