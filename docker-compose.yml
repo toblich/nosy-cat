@@ -73,7 +73,10 @@ services:
     links:
       - graph-service
       - kafka
-    environment: *base-environment
+      - pulsar
+    environment:
+      <<: *base-environment
+      PULSAR: "pulsar://pulsar:6650"
 
   graph-service:
     build:
@@ -134,7 +137,9 @@ services:
     command: >
       /bin/bash -c
       "bin/apply-config-from-env.py conf/pulsar.conf
-      && bin/pulsar pulsar"
+      && bin/pulsar standalone"
+    volumes:
+      - "./pulsar.conf:/pulsar/conf/pulsar.conf"
 
   pulsar-dashboard:
     image: apachepulsar/pulsar-dashboard
@@ -143,4 +148,4 @@ services:
     ports:
       - "80:80"
     environment:
-      - SERVICE_URL=http://standalone:8080
+      - SERVICE_URL=http://pulsar:8080

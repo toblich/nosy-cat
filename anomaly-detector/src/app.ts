@@ -32,6 +32,8 @@ function getErrorsByMetric(serviceThresholds: Metrics, service: Component): Dict
 }
 
 export async function processComponentCall(producer: PulsarProducer, serviceValue: ComponentCall): Promise<void> {
+  logger.debug(`ENTRA A PROCESS COMPONENT CALL ${serviceValue}`);
+
   const component = (await graphClient.getService(serviceValue.callee)).body;
 
   const serviceThresholds: Metrics = {
@@ -72,6 +74,8 @@ export async function processComponentCall(producer: PulsarProducer, serviceValu
         serviceValue.callee
       )
   );
+
+  logger.debug("ESTA LLEGANDO HASTA ACA");
 
   producer.send({
     data: Buffer.from("HOLAAAAA")
