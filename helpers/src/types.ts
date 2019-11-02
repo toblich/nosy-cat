@@ -9,14 +9,20 @@ export enum ComponentStatus {
   PERPETRATOR = "PERPETRATOR"
 }
 
+export enum ZipkinSpanKind {
+  SERVER = "SERVER",
+  CLIENT = "CLIENT"
+}
+
 export interface ZipkinSpan {
   traceId: string;
   parentId: string;
   id: string;
   name: string;
-  kind: string;
+  kind: ZipkinSpanKind; // SERVER - CLIENT
   timestamp: number;
   duration: number;
+  tags: Dictionary<any>;
   localEndpoint: { serviceName: string };
   remoteEndpoint: { serviceName: string; port: string };
 }

@@ -9,10 +9,27 @@ const graphClient = generateGraphClient(
 
 // ---
 
-const processSpan = (span: ZipkinSpan): ComponentCall => ({
-  callee: (span.localEndpoint && span.localEndpoint.serviceName) || undefined,
-  caller: (span.remoteEndpoint && span.remoteEndpoint.serviceName) || undefined
-});
+function hasErrored(span: ZipkinSpan): boolean {
+  if (span.tags && span.tags["http.status_code"]) {
+    return span.tags["http.status_code"] > 400;
+  }
+
+  return false;
+}
+
+const processSpan = (span: ZipkinSpan): ComponentCall => {
+  const errored = hasErrored(span);
+  // TODO: Review kind Server/Client to avoid duplicate metrics
+  return {
+    callee: (span.localEndpoint && span.localEndpoint.serviceName) || undefined,
+    caller: (span.remoteEndpoint && span.remoteEndpoint.serviceName) || undefined,
+    metrics: {
+      duration: span.duration,
+      errored,
+      timestamp: span.timestamp
+    }
+  };
+};
 
 function registerDependencies(value: ZipkinSpan[] | ZipkinSpan): ComponentCall[] {
   if (Array.isArray(value)) {
@@ -24,13 +41,14 @@ function registerDependencies(value: ZipkinSpan[] | ZipkinSpan): ComponentCall[]
 
 async function onEachMessage(producer: Producer, args: any): Promise<void> {
   const [{ partition, message }] = args;
-  logger.info(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
+  logger.debug(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
   const value = JSON.parse(message.value.toString());
 
-  logger.info(`value ${JSON.stringify(value)}`);
+  logger.debug(`value ${JSON.stringify(value)}`);
   const componentCalls = registerDependencies(value);
-  logger.info(`componentCalls ${JSON.stringify(componentCalls)}`);
+
+  logger.debug(`componentCalls ${JSON.stringify(componentCalls)}`);
 
   try {
     await graphClient.postComponentCalls(componentCalls);
