@@ -87,29 +87,24 @@ interface Entry {
 }
 
 async function onEveryMessage(producer: PulsarProducer, entries: Entry[]): Promise<void> {
-  try {
-    const processMessages = entries.map(async (entry: Entry) => {
-      const { partition, message } = entry;
+  const processMessages = entries.map(async (entry: Entry) => {
+    const { partition, message } = entry;
 
-      try {
-        logger.debug(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
+    try {
+      logger.debug(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
-        const componentCalls: ComponentCall[] = JSON.parse(message.value.toString());
+      const componentCalls: ComponentCall[] = JSON.parse(message.value.toString());
 
-        await Promise.all(
-          componentCalls.map((componentCall: ComponentCall) => processComponentCall(producer, componentCall))
-        );
-      } catch (error) {
-        logger.error(`The error was inside a message: ${error}`);
-        logger.error(`the message was: ${entry}`);
-      }
-    });
+      await Promise.all(
+        componentCalls.map((componentCall: ComponentCall) => processComponentCall(producer, componentCall))
+      );
+    } catch (error) {
+      logger.error(`Error processing an entry: ${error}`);
+      logger.data(`The entry was: ${JSON.stringify(entry)}`);
+    }
+  });
 
-    await Promise.all(processMessages);
-  } catch (error) {
-    logger.error(`The error was: ${JSON.stringify(error)}`);
-    logger.error(`The arguments were: ${JSON.stringify(arguments)}`);
-  }
+  await Promise.all(processMessages);
 }
 
 function getServiceThreshold(value: ComponentCall, type: keyof Metrics): Range {
