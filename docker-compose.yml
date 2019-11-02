@@ -61,6 +61,7 @@ services:
       <<: *base-build
       args:
         - SERVICE=anomaly-detector
+        - INSTALL_PULSAR=true
     volumes:
       - "./nodemon.json:/project/nodemon.json"
       - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"

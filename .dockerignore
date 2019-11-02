@@ -15,3 +15,5 @@
 
 !graph-service/src
 !graph-service/*.json
+
+!pulsar-assets/
