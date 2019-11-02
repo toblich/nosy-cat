@@ -10,6 +10,7 @@ const pulsar = (): Pulsar.Client => {
 export interface PulsarProducer {
   send: (body: any) => undefined;
   flush: () => Promise<void>;
+  close: () => Promise<void>;
 }
 
 const getPulsarProducer = async (topic: string): Promise<PulsarProducer> => {

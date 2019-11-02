@@ -74,6 +74,8 @@ services:
       - graph-service
       - kafka
       - pulsar
+    depends_on:
+      - pulsar
     environment:
       <<: *base-environment
       PULSAR: "pulsar://pulsar:6650"
@@ -106,6 +108,8 @@ services:
   kafka:
     image: wurstmeister/kafka
     depends_on:
+      - zookeeper
+    links:
       - zookeeper
     ports:
       - "9092:9092"

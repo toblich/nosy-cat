@@ -5,7 +5,12 @@ import { getPulsarProducer, PulsarProducer } from "./pulsar";
 const onEachMessageFactory = (
   producer: PulsarProducer,
   onEachMessage: (...args: any) => Promise<void>
-): ((...args: any) => Promise<void>) => (...args: any): Promise<void> => onEachMessage(producer, args);
+): ((...args: any) => Promise<void>) => (...args: any): Promise<void> => {
+  logger.debug(`producer ${producer}`);
+  logger.debug(`typeof producer ${typeof producer}`);
+  logger.debug(`args ${JSON.stringify(args)}`);
+  return onEachMessage(producer, args);
+};
 
 export async function consume(
   tracer: Tracer,
