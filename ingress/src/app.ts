@@ -30,7 +30,10 @@ const run = async () => {
 
   // tslint:disable-next-line:typedef
   app.get("/", (req, res) => {
-    logger.info("Handling ping");
+    logger.error("Test");
+    logger.warn("Test");
+    logger.info("Test");
+    logger.debug("Test");
     res.send("up");
   });
 

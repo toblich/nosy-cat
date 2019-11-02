@@ -26,6 +26,7 @@ services:
         - SERVICE=ingress
     ports:
       - "3000:3000"
+      - "9229:9229"
     volumes:
       - "./nodemon.json:/project/nodemon.json"
       - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
