@@ -2,5 +2,5 @@
   "watch": ["src", "../helpers"],
   "ext": "ts",
   "ignore": ["src/**/*.spec.ts"],
-  "exec": "node_modules/.bin/tsc -p tsconfig.json && node --inspect build/api.js"
+  "exec": "TS_NODE_PROJECT=tsconfig.json node --inspect -r ts-node/register ."
 }
