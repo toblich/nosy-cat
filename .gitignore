@@ -65,3 +65,7 @@ typings/
 
 # TS build dirs
 build/
+
+
+# Pulsar .deb files
+pulsar-assets/
