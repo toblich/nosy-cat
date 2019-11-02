@@ -6,11 +6,11 @@ import * as winston from "winston";
 const config = {
   levels: {
     error: 0,
-    debug: 1,
-    warn: 2,
+    warn: 1,
+    info: 2,
     data: 3,
-    info: 4,
-    verbose: 5,
+    verbose: 4,
+    debug: 5,
     silly: 6,
     custom: 7
   },
