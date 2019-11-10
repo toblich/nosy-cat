@@ -69,13 +69,11 @@ jobs:
       - run: "([ -d node_modules ] || npm ci) && npm run ci:install-all-projects"
 
       - save_cache:
-          key:
-            - *pulsar-client-dev
+          key: *pulsar-client-dev
           paths:
             - pulsar-assets
       - save_cache:
-          key:
-            - *pulsar-client
+          key: *pulsar-client
           paths:
             - pulsar-assets
       - save_cache:
