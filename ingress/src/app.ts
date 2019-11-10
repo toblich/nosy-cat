@@ -29,11 +29,7 @@ const run = async () => {
   });
 
   // tslint:disable-next-line:typedef
-  app.get("/", (req, res) => {
-    logger.error("Test");
-    logger.warn("Test");
-    logger.info("Test");
-    logger.debug("Test");
+  app.get("/", (_, res) => {
     res.send("up");
   });
 
