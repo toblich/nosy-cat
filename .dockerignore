@@ -17,3 +17,5 @@
 !graph-service/*.json
 
 !pulsar-assets/
+
+!wait-for-it.sh

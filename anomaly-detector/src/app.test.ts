@@ -1,6 +1,13 @@
 import * as Helpers from "helpers";
+import * as Pulsar from "./pulsar";
+
 const client: any = {};
 const clientMock = jest.spyOn(Helpers, "generateGraphClient").mockImplementationOnce(() => client as any);
+const pulsarClient = jest.spyOn(Pulsar, "getPulsarProducer").mockImplementation(async () => ({
+  send: jest.fn(),
+  close: jest.fn(),
+  flush: jest.fn()
+}));
 
 import { processComponentCall } from "./app";
 import { ComponentStatus } from "helpers";
@@ -33,7 +40,7 @@ describe("when processing a component call", () => {
         client.getService = jest.fn().mockResolvedValue(service);
         client.updateServiceMetrics = updateServiceMetrics;
 
-        await processComponentCall({ callee: service.body.id });
+        await processComponentCall(null, { callee: service.body.id });
       });
 
       it("should mark the service as normal", () => {
@@ -59,7 +66,7 @@ describe("when processing a component call", () => {
         client.getService = jest.fn().mockResolvedValue(service);
         client.updateServiceMetrics = updateServiceMetrics;
 
-        await processComponentCall({ callee: service.body.id });
+        await processComponentCall(null, { callee: service.body.id });
       });
 
       it("should not update anything", () => {
@@ -87,7 +94,7 @@ describe("when processing a component call", () => {
         client.getService = jest.fn().mockResolvedValue(service);
         client.updateServiceMetrics = updateServiceMetrics;
 
-        await processComponentCall({ callee: service.body.id });
+        await processComponentCall(null, { callee: service.body.id });
       });
 
       it("should not update anything", () => {
@@ -113,7 +120,7 @@ describe("when processing a component call", () => {
         client.getService = jest.fn().mockResolvedValue(service);
         client.updateServiceMetrics = updateServiceMetrics;
 
-        await processComponentCall({ callee: service.body.id });
+        await processComponentCall(null, { callee: service.body.id });
       });
 
       it("should update the service with Confirmed status", () => {
