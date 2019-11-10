@@ -4,7 +4,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-PROJECTS=(helpers ingress dependency-detector graph-service) # TODO: anomaly-detector root-cause-detector. NOTE: Add them in .circleci/config.yaml cache_key
+PROJECTS=(helpers ingress dependency-detector graph-service anomaly-detector) 
 
 COMMAND="$@"
 
