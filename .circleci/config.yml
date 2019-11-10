@@ -59,14 +59,10 @@ jobs:
             - anomaly_detector-v1-deps-
 
       - run: "[ -d pulsar-assets ] || mkdir pulsar-assets"
-      - run: "cd pulsar-assets"
       
-      - run: "[ -f apache-pulsar-client.deb ] || wget 'https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=pulsar/pulsar-2.4.1/DEB/apache-pulsar-client.deb' -o apache-pulsar-client.deb"
-      - run: "[ -f apache-pulsar-client-dev.deb ] || wget 'https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=pulsar/pulsar-2.4.1/DEB/apache-pulsar-client-dev.deb' -o apache-pulsar-client-dev.deb"
-      - run: "ls"
-      - run: "sudo apt install ./*.deb"
-
-      - run: "cd .."
+      - run: "[ -f pulsar-assets/apache-pulsar-client.deb ] || wget 'https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=pulsar/pulsar-2.4.1/DEB/apache-pulsar-client.deb' -o pulsar-assets/apache-pulsar-client.deb"
+      - run: "[ -f pulsar-assets/apache-pulsar-client-dev.deb ] || wget 'https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=pulsar/pulsar-2.4.1/DEB/apache-pulsar-client-dev.deb' -o pulsar-assets/apache-pulsar-client-dev.deb"
+      - run: "sudo apt install ./pulsar-assets/*.deb"
 
       - run: "([ -d node_modules ] || npm ci) && npm run ci:install-all-projects"
 
