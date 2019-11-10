@@ -19,7 +19,7 @@ export interface ZipkinSpan {
   parentId: string;
   id: string;
   name: string;
-  kind: ZipkinSpanKind; // SERVER - CLIENT
+  kind: ZipkinSpanKind;
   timestamp: number;
   duration: number;
   tags: Dictionary<any>;

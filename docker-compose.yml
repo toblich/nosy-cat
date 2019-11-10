@@ -78,7 +78,7 @@ services:
       - pulsar
     environment:
       <<: *base-environment
-      PULSAR: "pulsar://pulsar:6650"
+      PULSAR: "pulsar:6650"
 
   graph-service:
     build:

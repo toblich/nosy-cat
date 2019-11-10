@@ -2,7 +2,7 @@ import * as Pulsar from "pulsar-client";
 
 const pulsar = (): Pulsar.Client => {
   return new Pulsar.Client({
-    serviceUrl: process.env.PULSAR || "pulsar://localhost:6650",
+    serviceUrl: `pulsar://${process.env.PULSAR || "localhost:6650"}`,
     operationTimeoutSeconds: 30
   });
 };
