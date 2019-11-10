@@ -33,7 +33,7 @@ describe("when processing a component call", () => {
         client.getService = jest.fn().mockResolvedValue(service);
         client.updateServiceMetrics = updateServiceMetrics;
 
-        await processComponentCall({ callee: service.body.id });
+        await processComponentCall(null, { callee: service.body.id });
       });
 
       it("should mark the service as normal", () => {
@@ -59,7 +59,7 @@ describe("when processing a component call", () => {
         client.getService = jest.fn().mockResolvedValue(service);
         client.updateServiceMetrics = updateServiceMetrics;
 
-        await processComponentCall({ callee: service.body.id });
+        await processComponentCall(null, { callee: service.body.id });
       });
 
       it("should not update anything", () => {
@@ -87,7 +87,7 @@ describe("when processing a component call", () => {
         client.getService = jest.fn().mockResolvedValue(service);
         client.updateServiceMetrics = updateServiceMetrics;
 
-        await processComponentCall({ callee: service.body.id });
+        await processComponentCall(null, { callee: service.body.id });
       });
 
       it("should not update anything", () => {
@@ -113,7 +113,7 @@ describe("when processing a component call", () => {
         client.getService = jest.fn().mockResolvedValue(service);
         client.updateServiceMetrics = updateServiceMetrics;
 
-        await processComponentCall({ callee: service.body.id });
+        await processComponentCall(null, { callee: service.body.id });
       });
 
       it("should update the service with Confirmed status", () => {
