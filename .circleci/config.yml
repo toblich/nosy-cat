@@ -24,12 +24,12 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - &pulsar-client-dev pulsar-client-dev-{{ checksum "pulsar-assets/apache-pulsar-client-dev.deb" }}
+            - &pulsar-client-dev pulsar-client-dev
             # fallback to using the latest cache if no exact match is found
             - pulsar-client-dev-
       - restore_cache:
           keys:
-            - &pulsar-client pulsar-client-{{ checksum "pulsar-assets/apache-pulsar-client.deb" }}
+            - &pulsar-client pulsar-client
             # fallback to using the latest cache if no exact match is found
             - pulsar-client-
       - restore_cache:
