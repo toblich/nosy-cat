@@ -24,6 +24,16 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
+            - &pulsar-client-dev pulsar-client-dev-{{ checksum "apache-pulsar-client-dev.deb" }}
+            # fallback to using the latest cache if no exact match is found
+            - pulsar-client-dev-
+      - restore_cache:
+          keys:
+            - &pulsar-client pulsar-client-{{ checksum "apache-pulsar-client.deb" }}
+            # fallback to using the latest cache if no exact match is found
+            - pulsar-client-
+      - restore_cache:
+          keys:
             - &root_cache root-v1-deps-{{ checksum "package.json" }}
             # fallback to using the latest cache if no exact match is found
             - root--v1-deps-
@@ -47,9 +57,22 @@ jobs:
           keys:
             - &anomaly_detector_cache anomaly_detector-v1-deps-{{ checksum "anomaly-detector/package.json" }}
             - anomaly_detector-v1-deps-
+      
+      - run: "[ -f pulsar-assets/apache-pulsar-client.deb ] wget https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=pulsar/pulsar-2.4.1/DEB/apache-pulsar-client.deb || echo 'using pulsar client cache'"
+      - run: "[ -f pulsar-assets/apache-pulsar-client-dev.deb ] wget https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=pulsar/pulsar-2.4.1/DEB/apache-pulsar-client-dev.deb || echo 'using pulsar dev client cache'"
 
       - run: "([ -d node_modules ] || npm ci) && npm run ci:install-all-projects"
 
+      - save_cache:
+          keys:
+            - *pulsar-client-dev
+          paths:
+            - pulsar-assets
+      - save_cache:
+          keys:
+            - *pulsar-client
+          paths:
+            - pulsar-assets
       - save_cache:
           key: *root_cache
           paths:
