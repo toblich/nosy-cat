@@ -37,3 +37,7 @@ COPY --from=helpers ./project/helpers/ /project/helpers
 COPY --from=service ./project/app/ /project/app
 
 WORKDIR /project/app
+
+COPY ./wait-for-it.sh .
+
+RUN chmod +x wait-for-it.sh
