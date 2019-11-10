@@ -28,6 +28,11 @@ const run = async () => {
     }
   });
 
+  // tslint:disable-next-line:typedef
+  app.get("/", (_, res) => {
+    res.send("up");
+  });
+
   app.listen(3000, () => logger.info("Ingress listening on port 3000"));
 };
 

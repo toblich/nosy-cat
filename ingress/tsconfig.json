@@ -12,7 +12,8 @@
     "paths": {},
     "baseUrl": "./",
     "lib": ["es6", "es2015.promise", "es2015", "dom"],
-    "typeRoots": ["node_modules/@types", "./types/"]
+    "typeRoots": ["node_modules/@types", "./types/"],
+    "sourceRoot": "/project/app"
   },
   "exclude": ["node_modules"],
   "include": ["**/*.ts"]

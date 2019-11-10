@@ -13,7 +13,8 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
-    "lib": ["dom", "es6"]
+    "lib": ["dom", "es6"],
+    "typeRoots": ["node_modules/@types", "./types/"]
   },
   "exclude": ["node_modules", "build", "**/__test__"],
   "include": ["src", "declarations/"]
