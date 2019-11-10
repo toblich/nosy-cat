@@ -61,8 +61,8 @@ jobs:
       - run: "[ -d pulsar-assets ] || mkdir pulsar-assets"
       - run: "cd pulsar-assets"
       
-      - run: "([ -f apache-pulsar-client.deb ] && echo 'using pulsar client cache') || wget https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=pulsar/pulsar-2.4.1/DEB/apache-pulsar-client.deb"
-      - run: "([ -f apache-pulsar-client-dev.deb ] && echo 'using pulsar dev client cache') || wget https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=pulsar/pulsar-2.4.1/DEB/apache-pulsar-client-dev.deb"
+      - run: "wget https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=pulsar/pulsar-2.4.1/DEB/apache-pulsar-client.deb"
+      - run: "wget https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=pulsar/pulsar-2.4.1/DEB/apache-pulsar-client-dev.deb"
 
       - run: "cd .."
 
