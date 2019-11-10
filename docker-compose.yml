@@ -73,7 +73,12 @@ services:
     links:
       - graph-service
       - kafka
-    environment: *base-environment
+      - pulsar
+    depends_on:
+      - pulsar
+    environment:
+      <<: *base-environment
+      PULSAR: "pulsar:6650"
 
   graph-service:
     build:
@@ -104,6 +109,8 @@ services:
     image: wurstmeister/kafka
     depends_on:
       - zookeeper
+    links:
+      - zookeeper
     ports:
       - "9092:9092"
     environment:
@@ -123,3 +130,26 @@ services:
     links:
       - redis
     command: redis-cli -h redis
+
+  pulsar:
+    image: apachepulsar/pulsar
+    expose:
+      - 8080
+      - 6650
+    environment:
+      - PULSAR_MEM=" -Xms512m -Xmx512m -XX:MaxDirectMemorySize=1g"
+    command: >
+      /bin/bash -c
+      "bin/apply-config-from-env.py conf/pulsar.conf
+      && bin/pulsar standalone"
+    volumes:
+      - "./pulsar.conf:/pulsar/conf/pulsar.conf"
+
+  pulsar-dashboard:
+    image: apachepulsar/pulsar-dashboard
+    depends_on:
+      - pulsar
+    ports:
+      - "80:80"
+    environment:
+      - SERVICE_URL=http://pulsar:8080

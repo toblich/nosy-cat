@@ -16,8 +16,8 @@ export async function consume(
   try {
     const kafka = await kafkaWrapper(tracer, "dependency-detector");
 
-    const consumer = await kafka.consumer;
-    const producer = await kafka.producer;
+    const consumer = kafka.consumer;
+    const producer = kafka.producer;
 
     logger.debug(`subscribing to topic "${topic}"`);
 
