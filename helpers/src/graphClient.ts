@@ -17,8 +17,8 @@ class GraphClient {
     return superagent.post(`${this.url}/graph`).send(componentCalls);
   }
 
-  public getService(serviceName: string): PromiseRes<Component> {
-    const requestBody = { serviceName };
+  public getService(component: string): PromiseRes<Component> {
+    const requestBody = { component };
 
     return superagent.post(`${this.url}/graph/search`).send(requestBody);
   }

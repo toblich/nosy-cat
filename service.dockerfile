@@ -17,8 +17,6 @@ RUN if [ "${INSTALL_PULSAR}" = "true" ]; then \
    apt install ./pulsar-assets/*; \
   fi
 
-RUN mkdir -p /project/helpers
-
 RUN mkdir -p /project/app
 WORKDIR /project/app
 
@@ -27,14 +25,8 @@ COPY ./${SERVICE}/package*.json ./
 
 RUN npm i
 
-####
-
-FROM node:12 as dev
-
-RUN mkdir /project
-
+RUN mkdir -p /project/helpers
 COPY --from=helpers ./project/helpers/ /project/helpers
-COPY --from=service ./project/app/ /project/app
 
 WORKDIR /project/app
 
