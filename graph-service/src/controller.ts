@@ -6,7 +6,7 @@ import {
   AddComponentsReq,
   EmptyReq,
   ComponentCall,
-  Component
+  UIGraph
 } from "helpers";
 import * as service from "./service";
 
@@ -25,6 +25,12 @@ export async function getGraphAsNodesAndEdges(_: EmptyReq, res: Response): Promi
   const result = await service.toUIObject();
   logger.debug(`Got result ${JSON.stringify(result, null, 4)}`);
   res.json(result);
+}
+
+export async function wsGraphAsNodesAndEdges(): Promise<UIGraph> {
+  const result = await service.toUIObject();
+  logger.debug(`Got result ${JSON.stringify(result, null, 4)}`);
+  return result;
 }
 
 export async function searchComponent(req: ComponentIdReq, res: Response): Promise<void> {

@@ -23,6 +23,49 @@ content-type: application/json
 
 ###
 
+POST {{base}}/graph
+content-type: application/json
+
+[{
+  "caller": "A",
+  "callee": "C",
+  "metrics": {
+    "duration": 12,
+    "errored": true,
+    "timestamp": {{$timestamp}}000
+  }
+}]
+
+###
+
+POST {{base}}/graph
+content-type: application/json
+
+[{
+  "callee": "D",
+  "metrics": {
+    "duration": 12,
+    "errored": true,
+    "timestamp": {{$timestamp}}000
+  }
+}]
+
+###
+
+POST {{base}}/graph
+content-type: application/json
+
+[{
+  "callee": "E",
+  "metrics": {
+    "duration": 12,
+    "errored": true,
+    "timestamp": {{$timestamp}}000
+  }
+}]
+
+###
+
 POST {{base}}/graph/search
 Content-Type: application/json
 

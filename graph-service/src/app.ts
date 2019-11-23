@@ -13,6 +13,9 @@ const { tracer } = createZipkinContextTracer("graph-service");
 
 // ---
 
+////////////////////
+// Wrap controller
+////////////////////
 interface Controller {
   [functionName: string]: any;
 }
@@ -27,8 +30,18 @@ const wrappedController: Controller = mapValues(controller, (originalMethod: exp
   };
 });
 
+////////////////////
+// Create express, server, and socketio
+////////////////////
 const app: express.Application = createZipkinExpress(tracer);
+const port = process.env.PORT || 6000;
+app.set("port", port);
+const http = new Server(app);
+const io = socketio(http);
 
+////////////////////
+// Set express routes
+////////////////////
 app.use(middlewares.logging);
 
 app.post("/graph", wrappedController.addComponentsAndDependencies);
@@ -45,20 +58,22 @@ app.get("/ws", (_: any, res: any) => {
 
 app.use(middlewares.globalErrorHandling);
 
-const port = process.env.PORT || 6000;
-app.set("port", port);
-
-const http = new Server(app);
-const io = socketio(http);
-
-io.on("connection", (socket: any) => {
+////////////////////
+// Set some SocketIO stuff on connection, mainly for debugging
+////////////////////
+io.on("connection", async (socket: socketio.Socket) => {
   logger.info("New WebSocket connection opened");
-  socket.send("Pong!");
+  socket.emit("graph", await controller.wsGraphAsNodesAndEdges());
 
-  socket.on("message", (message: socketio.Packet) => {
+  socket.on("message", async (message: socketio.Packet) => {
     logger.info(message);
-    socket.send("Test");
+    const graph = await controller.wsGraphAsNodesAndEdges();
+    logger.info(`Sending graph ${JSON.stringify(graph, null, 4)}`);
+    socket.emit("graph", graph);
   });
 });
 
+////////////////////
+// Actually start the server
+////////////////////
 const server = http.listen(port, () => logger.info(`Graph listening on port ${port}`));
