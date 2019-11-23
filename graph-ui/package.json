@@ -16,13 +16,11 @@
     "@types/react": "16.9.12",
     "@types/react-dom": "16.9.4",
     "@types/socket.io": "^2.1.4",
-    "@types/vis": "^4.21.19",
-    "customize-cra": "^0.9.1",
-    "react-app-rewired": "^2.1.5"
+    "@types/vis": "^4.21.19"
   },
   "scripts": {
-    "start": "react-app-rewired start",
-    "build": "react-app-rewired build",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
