@@ -3,14 +3,12 @@ import { flatMap, uniqBy, takeRightWhile } from "lodash";
 
 import { Graph } from "./Graph";
 import * as metricsRepository from "./metrics";
-import { Component, ComponentStatus, ComponentPlainObject, ComponentCall, ComponentMetrics } from "helpers";
+import { Component, ComponentStatus, ComponentPlainObject, ComponentCall, UINode, UIEdge, UIGraph } from "helpers";
 
 let graph = new Graph();
 
 interface GraphDebugObject {
-  [id: string]: {
-    [k in keyof ComponentPlainObject]: ComponentPlainObject[k];
-  } & { metrics?: ComponentMetrics };
+  [id: string]: Component;
 }
 
 export async function toPlainObject(): Promise<GraphDebugObject> {
@@ -35,6 +33,30 @@ export async function toPlainObject(): Promise<GraphDebugObject> {
     }
   }
   return graphDebugObject;
+}
+
+export async function toUIObject(): Promise<UIGraph> {
+  const graphPlainObject = await toPlainObject();
+  const nodes: UINode[] = [];
+  const edges: UIEdge[] = [];
+  for (const [componentId, component] of Object.entries(graphPlainObject)) {
+    nodes.push({
+      id: componentId,
+      label: componentId,
+      title: componentId,
+      metadata: {
+        status: component.status
+      }
+    });
+    for (const depId of component.dependencies) {
+      edges.push({
+        from: componentId,
+        to: depId,
+        metadata: {}
+      });
+    }
+  }
+  return { nodes, edges };
 }
 
 export function clear(): void {

@@ -66,6 +66,24 @@ export interface Component extends ComponentPlainObject {
   metrics: ComponentMetrics;
 }
 
+export interface UIGraph {
+  nodes: UINode[];
+  edges: UIEdge[];
+}
+
+export interface UIEdge {
+  from: string;
+  to: string;
+  metadata: any;
+}
+
+export interface UINode {
+  id: any;
+  label: string;
+  title: string;
+  metadata: any;
+}
+
 export interface Dictionary<T> {
   [x: string]: T;
 }
