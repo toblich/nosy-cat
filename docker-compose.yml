@@ -88,8 +88,7 @@ services:
       args:
         - SERVICE=graph-service
     ports:
-      - "6000:6000"
-      - "80:6000"
+      - "4000:4000"
     volumes:
       - "./nodemon.json:/project/nodemon.json"
       - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
@@ -147,11 +146,12 @@ services:
       && bin/pulsar standalone"
     volumes:
       - "./pulsar.conf:/pulsar/conf/pulsar.conf"
-  # pulsar-dashboard:
-  #   image: apachepulsar/pulsar-dashboard
-  #   depends_on:
-  #     - pulsar
-  #   ports:
-  #     - "80:80"
-  #   environment:
-  #     - SERVICE_URL=http://pulsar:8080
+
+  pulsar-dashboard:
+    image: apachepulsar/pulsar-dashboard
+    depends_on:
+      - pulsar
+    ports:
+      - "80:80"
+    environment:
+      - SERVICE_URL=http://pulsar:8080

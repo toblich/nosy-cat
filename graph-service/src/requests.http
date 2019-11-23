@@ -1,4 +1,4 @@
-@base = http://localhost:6000
+@base = http://localhost:4000
 
 GET {{base}}/graph
 

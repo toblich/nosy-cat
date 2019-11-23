@@ -37,7 +37,7 @@ const wrappedController: Controller = mapValues(controller, (originalMethod: exp
 // Create express, server, and socketio
 ////////////////////
 const app: express.Application = createZipkinExpress(tracer);
-const port = process.env.PORT || 6000;
+const port = process.env.PORT || 4000;
 app.set("port", port);
 const http = new Server(app);
 const io = socketio(http);
