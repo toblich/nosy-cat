@@ -4,6 +4,10 @@ GET {{base}}/graph
 
 ###
 
+GET {{base}}/ui
+
+###
+
 POST {{base}}/graph
 content-type: application/json
 

@@ -7,6 +7,7 @@ x-base-build: &base-build
   context: .
   dockerfile: service.dockerfile
 
+x-base-command: &base-command sh -c "npm run start:dockerized"
 x-base-kafka-command: &base-kafka-command sh -c "./wait-for-it.sh $$KAFKA -- npm run start:dockerized"
 x-base-kafka-pulsar-command: &base-kafka-pulsar-command sh -c "./wait-for-it.sh $$KAFKA -- ./wait-for-it.sh $$PULSAR -t 60 -- npm run start:dockerized"
 
@@ -88,6 +89,7 @@ services:
         - SERVICE=graph-service
     ports:
       - "6000:6000"
+      - "80:6000"
     volumes:
       - "./nodemon.json:/project/nodemon.json"
       - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
@@ -95,7 +97,7 @@ services:
       - "./helpers/src:/project/helpers/src"
       - "./graph-service/tsconfig.json:/project/app/tsconfig.json"
       - "./graph-service/src:/project/app/src"
-    command: *base-kafka-command
+    command: *base-command
     links:
       - redis
     environment:
@@ -145,12 +147,11 @@ services:
       && bin/pulsar standalone"
     volumes:
       - "./pulsar.conf:/pulsar/conf/pulsar.conf"
-
-  pulsar-dashboard:
-    image: apachepulsar/pulsar-dashboard
-    depends_on:
-      - pulsar
-    ports:
-      - "80:80"
-    environment:
-      - SERVICE_URL=http://pulsar:8080
+  # pulsar-dashboard:
+  #   image: apachepulsar/pulsar-dashboard
+  #   depends_on:
+  #     - pulsar
+  #   ports:
+  #     - "80:80"
+  #   environment:
+  #     - SERVICE_URL=http://pulsar:8080
