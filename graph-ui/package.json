@@ -3,14 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@types/jest": "24.0.23",
-    "@types/node": "12.12.8",
-    "@types/react": "16.9.11",
-    "@types/react-dom": "16.9.4",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
+    "react-graph-vis": "^1.0.5",
     "react-scripts": "3.2.0",
+    "socket.io-client": "^2.3.0",
     "typescript": "3.7.2"
+  },
+  "devDependencies": {
+    "@types/jest": "24.0.23",
+    "@types/node": "12.12.12",
+    "@types/react": "16.9.12",
+    "@types/react-dom": "16.9.4",
+    "@types/socket.io": "^2.1.4",
+    "@types/vis": "^4.21.19"
   },
   "scripts": {
     "start": "react-scripts start",
