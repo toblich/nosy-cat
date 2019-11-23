@@ -9,6 +9,14 @@ const graph = {
   edges: []
 };
 
+enum ComponentStatus {
+  NORMAL = "NORMAL",
+  SUSPICIOUS = "SUSPICIOUS",
+  CONFIRMED = "CONFIRMED",
+  VICTIM = "VICTIM",
+  PERPETRATOR = "PERPETRATOR"
+}
+
 const options: Options = {
   layout: {
     hierarchical: true
@@ -29,12 +37,27 @@ const options: Options = {
 
 const events = {
   select: (event: any): void => {
-    const { nodes, edges } = event;
-    console.log(nodes, edges);
+    // const { nodes, edges } = event;
   }
 };
 
-// const prettify = (graph) => {}
+const colorMap = {
+  [ComponentStatus.NORMAL]: "#A9E5BB",
+  [ComponentStatus.SUSPICIOUS]: "#FCF6B1",
+  [ComponentStatus.PERPETRATOR]: "#F72C25",
+  [ComponentStatus.VICTIM]: "#F7B32B",
+  [ComponentStatus.CONFIRMED]: "#F7B32B"
+};
+
+const prettify = (newGraph: any): any => {
+  return {
+    ...newGraph,
+    nodes: newGraph.nodes.map((node: any) => ({
+      ...node,
+      color: colorMap[node.metadata.status as ComponentStatus]
+    }))
+  };
+};
 
 class App extends React.PureComponent<any, any> {
   private socket: SocketIOClient.Socket;
@@ -45,20 +68,15 @@ class App extends React.PureComponent<any, any> {
       graph
     };
 
-    this.socket = connect("http://localhost:51083");
+    this.socket = connect("http://localhost:4000");
   }
 
   public componentDidMount(): void {
     this.socket.on("graph", (newGraph: any): void => {
-      // console.log("graph sent", newGraph);
       this.setState({
-        graph: newGraph
+        graph: prettify(newGraph)
       });
     });
-
-    setInterval(() => {
-      this.socket.send("joni");
-    }, 10000);
   }
 
   public render(): JSX.Element {
