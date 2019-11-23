@@ -70,3 +70,13 @@ POST {{base}}/graph/search
 Content-Type: application/json
 
 {"component": "A"}
+
+###
+
+PATCH {{base}}/graph/components/status
+Content-Type: application/json
+
+{
+  "component": "A",
+  "status": "PERPETRATOR"
+}

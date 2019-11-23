@@ -23,6 +23,9 @@ const wrappedController: Controller = mapValues(controller, (originalMethod: exp
   return async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
     try {
       await originalMethod(req, res, next);
+      // Call next middleware, which even if the caller got its response might do other stuff
+      // like updating clients on WebSockets
+      next();
     } catch (e) {
       next(e);
       return;
@@ -44,11 +47,11 @@ const io = socketio(http);
 ////////////////////
 app.use(middlewares.logging);
 
-app.post("/graph", wrappedController.addComponentsAndDependencies);
+app.post("/graph", wrappedController.addComponentsAndDependencies, emitGraph);
 app.get("/graph", wrappedController.getGraphAsJson);
 app.get("/ui", wrappedController.getGraphAsNodesAndEdges);
 app.post("/graph/search", wrappedController.searchComponent);
-app.patch("/graph/components/status", wrappedController.updateComponentStatus);
+app.patch("/graph/components/status", wrappedController.updateComponentStatus, emitGraph);
 app.post("/graph/root-causes", wrappedController.findRootCauses);
 
 // This endpoint is just to get a test page of the WebSocket
@@ -61,19 +64,18 @@ app.use(middlewares.globalErrorHandling);
 ////////////////////
 // Set some SocketIO stuff on connection, mainly for debugging
 ////////////////////
-io.on("connection", async (socket: socketio.Socket) => {
+io.on("connection", async () => {
   logger.info("New WebSocket connection opened");
-  socket.emit("graph", await controller.wsGraphAsNodesAndEdges());
-
-  socket.on("message", async (message: socketio.Packet) => {
-    logger.info(message);
-    const graph = await controller.wsGraphAsNodesAndEdges();
-    logger.info(`Sending graph ${JSON.stringify(graph, null, 4)}`);
-    socket.emit("graph", graph);
-  });
+  await emitGraph();
 });
 
 ////////////////////
 // Actually start the server
 ////////////////////
 const server = http.listen(port, () => logger.info(`Graph listening on port ${port}`));
+
+async function emitGraph(): Promise<void> {
+  const graph = await controller.wsGraphAsNodesAndEdges();
+  logger.info("Emitting graph");
+  io.sockets.emit("graph", graph);
+}
