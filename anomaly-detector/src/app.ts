@@ -20,7 +20,7 @@ const { tracer } = createZipkinContextTracer("anomaly-detector");
 consume(tracer, "dependency-detector", onEveryMessage);
 
 const graphClient = generateGraphClient(
-  `http://${process.env.GRAPH_HOST || "localhost"}:${process.env.GRAPH_PORT || 6000}`
+  `http://${process.env.GRAPH_HOST || "localhost"}:${process.env.GRAPH_PORT || 4000}`
 );
 
 // ---
