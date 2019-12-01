@@ -3,19 +3,12 @@ import "./App.css";
 import Graph from "react-graph-vis";
 import { Options } from "vis";
 import { connect } from "socket.io-client";
+import { ComponentStatus, UIGraph, UINode } from "helpers/build/types";
 
 const graph = {
   nodes: [],
   edges: []
 };
-
-enum ComponentStatus {
-  NORMAL = "NORMAL",
-  SUSPICIOUS = "SUSPICIOUS",
-  CONFIRMED = "CONFIRMED",
-  VICTIM = "VICTIM",
-  PERPETRATOR = "PERPETRATOR"
-}
 
 const options: Options = {
   layout: {
@@ -49,10 +42,10 @@ const colorMap = {
   [ComponentStatus.CONFIRMED]: "#F7B32B"
 };
 
-const prettify = (newGraph: any): any => {
+const prettify = (newGraph: UIGraph): UIGraph => {
   return {
     ...newGraph,
-    nodes: newGraph.nodes.map((node: any) => ({
+    nodes: newGraph.nodes.map((node: UINode) => ({
       ...node,
       color: colorMap[node.metadata.status as ComponentStatus]
     }))
@@ -72,7 +65,7 @@ class App extends React.PureComponent<any, any> {
   }
 
   public componentDidMount(): void {
-    this.socket.on("graph", (newGraph: any): void => {
+    this.socket.on("graph", (newGraph: UIGraph): void => {
       this.setState({
         graph: prettify(newGraph)
       });
