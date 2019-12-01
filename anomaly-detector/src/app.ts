@@ -152,8 +152,16 @@ function wasServiceAnomalous(componentStatus: ComponentStatus): boolean {
   return [ComponentStatus.CONFIRMED, ComponentStatus.PERPETRATOR, ComponentStatus.VICTIM].includes(componentStatus);
 }
 
-function getMetricErrorMessage(type: MetricTypes, value: number, threshold: number, serviceName: string): string {
-  return `The service ${serviceName} is presenting an anomaly with the ${capitalize(
+function getMetricErrorMessage(type: MetricTypes, value: number, threshold: number, serviceName: string): any {
+  const message = `The service ${serviceName} is presenting an anomaly with the ${capitalize(
     type
   )}, the expected value is ${threshold} and the current value is ${value}`;
+
+  return {
+    serviceName,
+    type,
+    expected: threshold,
+    value,
+    message
+  };
 }
