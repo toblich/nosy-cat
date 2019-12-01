@@ -16,6 +16,9 @@
 !graph-service/src
 !graph-service/*.json
 
+!pagerduty-integration/src
+!pagerduty-integration/*.json
+
 !pulsar-assets/
 
 !wait-for-it.sh
