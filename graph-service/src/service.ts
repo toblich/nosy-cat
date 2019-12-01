@@ -66,15 +66,16 @@ export function clear(): void {
 export async function add({ caller, callee, metrics }: ComponentCall): Promise<void> {
   if (caller && callee) {
     graph.addDependency(caller, callee);
-    if (metrics) {
-      await metricsRepository.processRequest({ ...metrics, component: callee });
-    }
   } else if (caller) {
     graph.addComponent(caller);
   } else if (callee) {
     graph.addComponent(callee);
   } else {
     throw new httpErrors.BadRequest('The request must contain a "caller" and/or a "callee"');
+  }
+
+  if (metrics) {
+    await metricsRepository.processRequest({ ...metrics, component: callee });
   }
 }
 

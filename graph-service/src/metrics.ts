@@ -17,7 +17,7 @@ interface RequestMetadata {
   duration: number;
 }
 export async function processRequest({ component, errored, timestamp, duration }: RequestMetadata): Promise<void> {
-  const key = await getKey(component, timestamp);
+  const key = await getKey(component, timestamp / 1000);
 
   logger.debug(`Processing request for key "${key}"`);
 
@@ -49,7 +49,7 @@ export async function getCurrent(component: string): Promise<ComponentMetrics> {
   return {
     throughput: metrics[fields.THROUGHPUT],
     meanResponseTimeMs: metrics[fields.TOTAL_MS] / metrics[fields.THROUGHPUT],
-    errorRate: metrics[fields.ERRORS] / fields[fields.THROUGHPUT]
+    errorRate: metrics[fields.ERRORS] / metrics[fields.THROUGHPUT]
   };
 }
 
@@ -58,5 +58,7 @@ export async function getCurrent(component: string): Promise<ComponentMetrics> {
 async function getKey(component: string, timestamp: number): Promise<string> {
   const date = new Date(timestamp);
   logger.debug(`Timestamp: ${timestamp}. Date: ${date}. Minutes: ${date.getMinutes()}`);
-  return `${component}:${date.getMinutes()}`;
+  const key = `${component}:${date.getFullYear()}`;
+  logger.debug(`generated key: ${key}`);
+  return key;
 }
