@@ -25,18 +25,12 @@ consume(tracer, "dependency-detector", onEveryMessage);
 
   // tslint:disable-next-line: one-variable-per-declaration
   const serviceName = "Test",
-    type = "test",
+    type = MetricTypes.errorRate,
     threshold = -1,
     value = -100;
   logger.info("Sending test pulsar message");
   await pulsarProducer.send({
-    data: Buffer.from(
-      JSON.stringify([
-        `The service ${serviceName} is presenting an anomaly with the ${capitalize(
-          type
-        )}, the expected value is ${threshold} and the current value is ${value}`
-      ])
-    )
+    data: Buffer.from(JSON.stringify([getMetricErrorMessage(type, value, threshold, serviceName)]))
   });
   logger.info("Test pulsar message sent!");
 })();
