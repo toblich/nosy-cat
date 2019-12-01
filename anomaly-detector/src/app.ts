@@ -39,17 +39,17 @@ export async function processComponentCall(producer: PulsarProducer, serviceValu
     meanResponseTimeMs: getServiceThreshold(serviceValue, "meanResponseTimeMs"),
     throughput: getServiceThreshold(serviceValue, "throughput")
   };
-  logger.info(`thresholds: ${JSON.stringify(serviceThresholds, null, 2)}`);
-  logger.info(`component: ${JSON.stringify(component, null, 2)}`);
+  logger.debug(`thresholds: ${JSON.stringify(serviceThresholds, null, 2)}`);
+  logger.debug(`component: ${JSON.stringify(component, null, 2)}`);
 
   const errorsByMetric = getErrorsByMetric(serviceThresholds, component);
-  logger.info(`errorsByMetric: ${JSON.stringify(errorsByMetric, null, 2)}`);
+  logger.debug(`errorsByMetric: ${JSON.stringify(errorsByMetric, null, 2)}`);
 
   const serviceHasAnError = Object.keys(errorsByMetric).some((metricKey: string) => errorsByMetric[metricKey]);
 
-  logger.info(`serviceHasAnError: ${serviceHasAnError}`);
+  logger.debug(`serviceHasAnError: ${serviceHasAnError}`);
   const serviceIsBackToNormal = wasServiceAnomalous(component.status) && !serviceHasAnError;
-  logger.info(`serviceIsBackToNormal: ${serviceIsBackToNormal}`);
+  logger.debug(`serviceIsBackToNormal: ${serviceIsBackToNormal}`);
 
   if (serviceIsBackToNormal) {
     await graphClient.updateServiceMetrics(component.id, ComponentStatus.NORMAL);
