@@ -5,7 +5,7 @@ import { Options } from "vis";
 import { connect } from "socket.io-client";
 import { ComponentStatus, UIGraph, UINode } from "helpers/build/types";
 
-const graph = {
+const graph: UIGraph = {
   nodes: [],
   edges: []
 };
