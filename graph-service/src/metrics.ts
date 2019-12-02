@@ -57,8 +57,7 @@ export async function getCurrent(component: string): Promise<ComponentMetrics> {
 
 async function getKey(component: string, timestamp: number): Promise<string> {
   const date = new Date(timestamp);
-  logger.debug(`Timestamp: ${timestamp}. Date: ${date}. Minutes: ${date.getMinutes()}`);
-  const key = `${component}:${date.getFullYear()}`;
+  const key = `${component}:${date.getMinutes()}`;
   logger.debug(`generated key: ${key}`);
   return key;
 }
