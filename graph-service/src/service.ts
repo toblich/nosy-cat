@@ -1,14 +1,23 @@
 import * as httpErrors from "http-errors";
 import { flatMap, uniqBy, takeRightWhile } from "lodash";
 
-import { Graph } from "./Graph";
+import { Graph, Component } from "./Graph";
 import * as metricsRepository from "./metrics";
-import { Component, ComponentStatus, ComponentPlainObject, ComponentCall, UINode, UIEdge, UIGraph } from "helpers";
+import {
+  Component as HelperComponent,
+  ComponentStatus,
+  ComponentPlainObject,
+  ComponentCall,
+  UINode,
+  UIEdge,
+  UIGraph,
+  status
+} from "helpers";
 
 let graph = new Graph();
 
 interface GraphDebugObject {
-  [id: string]: Component;
+  [id: string]: HelperComponent;
 }
 
 export async function toPlainObject(): Promise<GraphDebugObject> {
@@ -79,7 +88,7 @@ export async function add({ caller, callee, metrics }: ComponentCall): Promise<v
   }
 }
 
-export async function search(id: string): Promise<Component> {
+export async function search(id: string): Promise<HelperComponent> {
   const plain: ComponentPlainObject = graph.getComponent(id).toPlainObject();
 
   if (!plain) {
@@ -99,16 +108,55 @@ export function findRootCauses(initialId: string): ComponentPlainObject[] {
     );
   }
 
-  if (initialComponent.status === ComponentStatus.NORMAL) {
+  if (status.isNormal(initialComponent.status)) {
     return [];
   }
 
   return uniqBy(internalDFS(initialId, new Set<string>(), []), "id");
 }
 
-export function updateComponentStatus(id: string, status: ComponentStatus): void {
+export function updateComponentStatus(id: string, newStatus: ComponentStatus): any {
+  // TODO types
   const component = graph.getComponent(id);
-  component.status = status;
+  const changes = {};
+
+  // Current component
+  const oldStatus = component.status;
+  if (status.hasChanged(oldStatus, newStatus)) {
+    changes[id] = { id, oldStatus, status: newStatus };
+    component.status = newStatus;
+  }
+
+  // Perpetrators
+  const newPerpetratorsFilter = (rc: ComponentPlainObject): boolean => rc.status !== ComponentStatus.PERPETRATOR;
+  const newPerpetrators = findRootCauses(id).filter(newPerpetratorsFilter);
+  for (const p of newPerpetrators) {
+    changes[p.id] = {
+      id: p.id,
+      oldStatus: p.status,
+      newStatus: ComponentStatus.PERPETRATOR
+    };
+    graph.getComponent(p.id).status = ComponentStatus.PERPETRATOR;
+  }
+
+  // Victims
+  const isPerpetrator = graph.getComponent(id).status === ComponentStatus.PERPETRATOR;
+  const newVictims = Array.from(component.consumers)
+    .map((componentId: string) => graph.getComponent(componentId))
+    .filter((rc: Component): boolean => rc.status === ComponentStatus.PERPETRATOR);
+  if (!isPerpetrator) {
+    newVictims.push(component);
+  }
+  for (const v of newVictims) {
+    changes[v.id] = {
+      id: v.id,
+      oldStatus: v.status,
+      newStatus: ComponentStatus.VICTIM
+    };
+    graph.getComponent(v.id).status = ComponentStatus.VICTIM;
+  }
+
+  return changes;
 }
 
 // ---

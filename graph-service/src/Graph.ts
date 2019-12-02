@@ -1,13 +1,20 @@
 import { ComponentStatus, ComponentPlainObject } from "helpers";
 
-class Component {
+export class Component {
   public id: string;
   public dependencies: Set<string>;
+  public consumers: Set<string>;
   public status: ComponentStatus;
 
-  constructor(id: string, dependencies: Set<string> = new Set(), status: ComponentStatus = ComponentStatus.NORMAL) {
+  constructor(
+    id: string,
+    dependencies: Set<string> = new Set(),
+    consumers: Set<string> = new Set(),
+    status: ComponentStatus = ComponentStatus.NORMAL
+  ) {
     this.id = id;
     this.dependencies = dependencies;
+    this.consumers = consumers;
     this.status = status;
   }
 
@@ -15,14 +22,23 @@ class Component {
     return this.dependencies.has(id);
   }
 
+  public isConsumedBy(id: string): boolean {
+    return this.consumers.has(id);
+  }
+
   public addDependency(id: string): void {
     this.dependencies.add(id);
+  }
+
+  public addConsumer(id: string): void {
+    this.consumers.add(id);
   }
 
   public toPlainObject(): ComponentPlainObject {
     return {
       id: this.id,
       dependencies: Array.from(this.dependencies),
+      consumers: Array.from(this.consumers),
       status: this.status
     };
   }
@@ -37,7 +53,15 @@ class MissingComponent extends Component {
     return false;
   }
 
+  public isConsumerBy(_: string): boolean {
+    return false;
+  }
+
   public addDependency(_: string): void {
+    return;
+  }
+
+  public addConsumer(_: string): void {
     return;
   }
 
@@ -85,10 +109,13 @@ export class Graph {
       this.graph.set(from, new Component(from, new Set(to)));
     }
     if (!this.graph.has(to)) {
-      this.graph.set(to, new Component(to));
+      this.graph.set(to, new Component(to, new Set(), new Set(from)));
+    } else {
+      this.graph.get(to).addConsumer(from);
     }
     if (!this.hasDependency(from, to)) {
       this.getComponent(from).addDependency(to);
+      this.getComponent(to).addConsumer(from);
     }
   }
 
