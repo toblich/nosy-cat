@@ -175,8 +175,8 @@ function internalDFS(id: string, visited: Set<string>, path: ComponentPlainObjec
   }
   visited.add(id);
 
-  const anomalousDeps = component.dependencies.filter(
-    (depId: string) => graph.getComponent(depId).status !== ComponentStatus.NORMAL
+  const anomalousDeps = component.dependencies.filter((depId: string) =>
+    status.isAnomalous(graph.getComponent(depId).status)
   );
   if (anomalousDeps.length === 0) {
     return [component];
