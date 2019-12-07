@@ -24,7 +24,7 @@ class GraphClient {
   }
 
   public updateServiceMetrics(componentId: string, status: ComponentStatus): PromiseRes<{}> {
-    const requestBody = { componentId, status };
+    const requestBody = { component: componentId, status };
 
     return superagent.patch(`${this.url}/graph/components/status`).send(requestBody);
   }
