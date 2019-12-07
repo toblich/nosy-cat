@@ -15,6 +15,7 @@ x-base-environment: &base-environment
   KAFKA: kafka:9093
   REDIS_HOST: redis
   GRAPH_HOST: graph-service
+  PULSAR: "pulsar:6650"
 
 ############
 # SERVICES #
@@ -80,7 +81,6 @@ services:
       - pulsar
     environment:
       <<: *base-environment
-      PULSAR: "pulsar:6650"
 
   graph-service:
     build:
@@ -99,6 +99,25 @@ services:
     command: *base-command
     links:
       - redis
+    environment:
+      <<: *base-environment
+
+  pagerduty-integration:
+    build:
+      <<: *base-build
+      args:
+        - SERVICE=pagerduty-integration
+        - INSTALL_PULSAR=true
+    volumes:
+      - "./nodemon.json:/project/nodemon.json"
+      - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+      - "./helpers/declarations:/project/helpers/declarations"
+      - "./helpers/src:/project/helpers/src"
+      - "./pagerduty-integration/tsconfig.json:/project/app/tsconfig.json"
+      - "./pagerduty-integration/src:/project/app/src"
+    command: *base-kafka-pulsar-command
+    links:
+      - pulsar
     environment:
       <<: *base-environment
 

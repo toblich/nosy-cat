@@ -1,0 +1,28 @@
+{
+  "name": "pagerduty-integration",
+  "version": "0.0.1",
+  "description": "Service that listens to Pulsar notifications and triggers a Pagerduty incident",
+  "main": "src/app.ts",
+  "scripts": {
+    "start": "nodemon --config ../nodemon.json",
+    "build": "tsc -p .",
+    "build-helpers": "cd ../helpers && npm run build && cd -",
+    "start:dockerized": "npm run build-helpers && npm run start",
+    "start:prod": "node ./build/app.js",
+    "test": "jest --forceExit --detectOpenHandles --coverage --verbose"
+  },
+  "author": "",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "helpers": "file:../helpers",
+    "pulsar-client": "^1.0.0",
+    "superagent": "^5.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^12.6.2",
+    "@types/superagent": "^4.1.4",
+    "nodemon": "^1.19.1",
+    "ts-node": "^8.3.0",
+    "typescript": "^3.6.2"
+  }
+}
