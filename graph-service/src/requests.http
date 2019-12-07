@@ -17,7 +17,7 @@ content-type: application/json
   "metrics": {
     "duration": 12,
     "errored": true,
-    "timestamp": {{$timestamp}}000
+    "timestamp": {{$timestamp}}000000
   }
 }]
 
@@ -32,7 +32,22 @@ content-type: application/json
   "metrics": {
     "duration": 12,
     "errored": true,
-    "timestamp": {{$timestamp}}000
+    "timestamp": {{$timestamp}}000000
+  }
+}]
+
+###
+
+POST {{base}}/graph
+content-type: application/json
+
+[{
+  "caller": "B",
+  "callee": "C",
+  "metrics": {
+    "duration": 12,
+    "errored": true,
+    "timestamp": {{$timestamp}}000000
   }
 }]
 
@@ -46,7 +61,7 @@ content-type: application/json
   "metrics": {
     "duration": 12,
     "errored": true,
-    "timestamp": {{$timestamp}}000
+    "timestamp": {{$timestamp}}000000
   }
 }]
 
@@ -60,7 +75,7 @@ content-type: application/json
   "metrics": {
     "duration": 12,
     "errored": true,
-    "timestamp": {{$timestamp}}000
+    "timestamp": {{$timestamp}}000000
   }
 }]
 
@@ -77,6 +92,6 @@ PATCH {{base}}/graph/components/status
 Content-Type: application/json
 
 {
-  "component": "A",
-  "status": "PERPETRATOR"
+  "component": "C",
+  "status": "CONFIRMED"
 }

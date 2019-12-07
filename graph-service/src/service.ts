@@ -1,14 +1,24 @@
 import * as httpErrors from "http-errors";
-import { flatMap, uniqBy, takeRightWhile } from "lodash";
+import { flatMap, forEach, uniqBy, takeRightWhile } from "lodash";
 
-import { Graph } from "./Graph";
+import { Graph, Component } from "./Graph";
 import * as metricsRepository from "./metrics";
-import { Component, ComponentStatus, ComponentPlainObject, ComponentCall, UINode, UIEdge, UIGraph } from "helpers";
+import {
+  Component as HelperComponent,
+  ComponentStatus,
+  ComponentPlainObject,
+  ComponentCall,
+  Dictionary,
+  UINode,
+  UIEdge,
+  UIGraph,
+  status
+} from "helpers";
 
 let graph = new Graph();
 
 interface GraphDebugObject {
-  [id: string]: Component;
+  [id: string]: HelperComponent;
 }
 
 export async function toPlainObject(): Promise<GraphDebugObject> {
@@ -79,7 +89,7 @@ export async function add({ caller, callee, metrics }: ComponentCall): Promise<v
   }
 }
 
-export async function search(id: string): Promise<Component> {
+export async function search(id: string): Promise<HelperComponent> {
   const plain: ComponentPlainObject = graph.getComponent(id).toPlainObject();
 
   if (!plain) {
@@ -99,16 +109,75 @@ export function findRootCauses(initialId: string): ComponentPlainObject[] {
     );
   }
 
-  if (initialComponent.status === ComponentStatus.NORMAL) {
+  if (status.isNormal(initialComponent.status)) {
     return [];
   }
 
   return uniqBy(internalDFS(initialId, new Set<string>(), []), "id");
 }
 
-export function updateComponentStatus(id: string, status: ComponentStatus): void {
+interface Change {
+  id: string;
+  from: { status: ComponentStatus };
+  to: { status: ComponentStatus };
+}
+
+export function updateComponentStatus(id: string, newStatus: ComponentStatus): Dictionary<Change> {
   const component = graph.getComponent(id);
-  component.status = status;
+  const changes: Dictionary<Change> = {};
+
+  // Current component
+  const oldStatus = component.status;
+  if (status.hasChanged(oldStatus, newStatus)) {
+    changes[id] = { id, from: { status: oldStatus }, to: { status: newStatus } };
+    component.status = newStatus;
+  }
+
+  if (status.isAnomalous(newStatus)) {
+    // Perpetrators
+    const newPerpetratorsFilter = (rc: ComponentPlainObject): boolean => rc.status !== ComponentStatus.PERPETRATOR;
+    const newPerpetrators = findRootCauses(id).filter(newPerpetratorsFilter);
+    for (const p of newPerpetrators) {
+      changes[p.id] = {
+        id: p.id,
+        from: { status: p.status },
+        to: { status: ComponentStatus.PERPETRATOR }
+      };
+      graph.getComponent(p.id).status = ComponentStatus.PERPETRATOR;
+    }
+
+    // Victims
+    const isPerpetrator = graph.getComponent(id).status === ComponentStatus.PERPETRATOR;
+    const newVictims = Array.from(component.consumers)
+      .map(getComponent)
+      .filter((rc: Component): boolean => rc.status === ComponentStatus.PERPETRATOR);
+    if (!isPerpetrator) {
+      newVictims.push(component);
+    }
+    for (const v of newVictims) {
+      changes[v.id] = {
+        id: v.id,
+        from: { status: v.status },
+        to: { status: ComponentStatus.VICTIM }
+      };
+      graph.getComponent(v.id).status = ComponentStatus.VICTIM;
+    }
+  } else {
+    // An anomalous component has healed. All its anomalous consumers (which must have been Victims)
+    // may have to be turned into perpetrators, at least until they heal later on.
+    // So, we flag them as CONFIRMED and re-run the root cause analysis for each of them.
+    // Finally, all state changes are aggregated.
+    const anomalousConsumers = Array.from(component.consumers)
+      .map(getComponent)
+      .filter((consumer: Component) => status.isAnomalous(consumer.status));
+
+    for (const consumer of anomalousConsumers) {
+      const partialChanges = updateComponentStatus(consumer.id, ComponentStatus.CONFIRMED);
+      forEach(partialChanges, (partialChange: Change, componentId: string) => (changes[componentId] = partialChange));
+    }
+  }
+
+  return changes;
 }
 
 // ---
@@ -127,8 +196,8 @@ function internalDFS(id: string, visited: Set<string>, path: ComponentPlainObjec
   }
   visited.add(id);
 
-  const anomalousDeps = component.dependencies.filter(
-    (depId: string) => graph.getComponent(depId).status !== ComponentStatus.NORMAL
+  const anomalousDeps = component.dependencies.filter((depId: string) =>
+    status.isAnomalous(graph.getComponent(depId).status)
   );
   if (anomalousDeps.length === 0) {
     return [component];
@@ -136,4 +205,8 @@ function internalDFS(id: string, visited: Set<string>, path: ComponentPlainObjec
 
   path.push(component);
   return flatMap(anomalousDeps, (depId: string) => internalDFS(depId, visited, path));
+}
+
+function getComponent(componentId: string): Component {
+  return graph.getComponent(componentId);
 }
