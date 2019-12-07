@@ -49,6 +49,7 @@ app.use(middlewares.logging);
 
 app.post("/graph", wrappedController.addComponentsAndDependencies, emitGraph);
 app.get("/graph", wrappedController.getGraphAsJson);
+app.delete("/graph", wrappedController.resetGraph, emitGraph);
 app.get("/ui", wrappedController.getGraphAsNodesAndEdges);
 app.post("/graph/search", wrappedController.searchComponent);
 app.patch("/graph/components/status", wrappedController.updateComponentStatus, emitGraph);

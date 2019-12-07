@@ -1,0 +1,78 @@
+version: "3.7"
+
+x-base-environment: &base-environment
+  INGRESS_HOST: ingress
+  INGRESS_PORT: 3000
+
+x-base-networks: &base-networks
+  - nosy-cat_nosy-cat
+
+services:
+  xapi:
+    build:
+      context: .
+    volumes:
+      - "./:/project/app"
+    links:
+      - redis
+      - iam
+    ports:
+      - "7000:80"
+    environment:
+      <<: *base-environment
+      NAME: xAPI
+    networks: *base-networks
+
+  iam:
+    build:
+      context: .
+    volumes:
+      - "./:/project/app"
+    links:
+      - postgres
+    environment:
+      <<: *base-environment
+      NAME: IAM
+    networks: *base-networks
+
+  inventory:
+    build:
+      context: .
+    volumes:
+      - "./:/project/app"
+    environment:
+      <<: *base-environment
+      NAME: Inventory
+    networks: *base-networks
+
+  billing:
+    build:
+      context: .
+    volumes:
+      - "./:/project/app"
+    environment:
+      <<: *base-environment
+      NAME: Billing
+    networks: *base-networks
+
+  payments:
+    build:
+      context: .
+    volumes:
+      - "./:/project/app"
+    environment:
+      <<: *base-environment
+      NAME: Payments
+    networks: *base-networks
+
+  redis:
+    image: redis
+    networks: *base-networks
+
+  postgres:
+    image: postgres:11
+    networks: *base-networks
+
+networks:
+  nosy-cat_nosy-cat:
+    external: true

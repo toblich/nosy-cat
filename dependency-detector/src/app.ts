@@ -19,15 +19,26 @@ function hasErrored(span: ZipkinSpan): boolean {
 
 const processSpan = (span: ZipkinSpan): ComponentCall => {
   const errored = hasErrored(span);
-  // TODO: Review kind Server/Client to avoid duplicate metrics
+  const remoteEndpointName = (span.remoteEndpoint && span.remoteEndpoint.serviceName) || undefined;
+  const localEndpointName = (span.localEndpoint && span.localEndpoint.serviceName) || undefined;
+  const metrics = {
+    duration: span.duration,
+    errored,
+    timestamp: span.timestamp
+  };
+
+  if (span.kind === "SERVER") {
+    return {
+      callee: localEndpointName,
+      caller: remoteEndpointName,
+      metrics
+    };
+  }
+
   return {
-    callee: (span.localEndpoint && span.localEndpoint.serviceName) || undefined,
-    caller: (span.remoteEndpoint && span.remoteEndpoint.serviceName) || undefined,
-    metrics: {
-      duration: span.duration,
-      errored,
-      timestamp: span.timestamp
-    }
+    callee: remoteEndpointName,
+    caller: localEndpointName,
+    metrics
   };
 };
 

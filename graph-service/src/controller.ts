@@ -48,3 +48,8 @@ export function updateComponentStatus(req: UpdateComponentStatusReq, res: Respon
   service.updateComponentStatus(component, status);
   res.status(200).send();
 }
+
+export async function resetGraph(req: EmptyReq, res: Response): Promise<void> {
+  await service.clear();
+  res.status(204).send();
+}
