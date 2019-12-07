@@ -59,6 +59,7 @@ export interface ComponentCall {
 export interface ComponentPlainObject {
   id: string;
   dependencies: string[];
+  consumers: string[];
   status: ComponentStatus;
 }
 

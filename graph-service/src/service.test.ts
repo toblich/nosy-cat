@@ -30,11 +30,11 @@ describe("service", () => {
 
       expected = mapValues(
         {
-          A: { dependencies: ["B", "E"], status: ComponentStatus.NORMAL },
-          B: { dependencies: [], status: ComponentStatus.NORMAL },
-          C: { dependencies: [], status: ComponentStatus.NORMAL },
-          D: { dependencies: [], status: ComponentStatus.NORMAL },
-          E: { dependencies: ["B"], status: ComponentStatus.NORMAL }
+          A: { dependencies: ["B", "E"], consumers: [], status: ComponentStatus.NORMAL },
+          B: { dependencies: [], consumers: ["A", "E"], status: ComponentStatus.NORMAL },
+          C: { dependencies: [], consumers: [], status: ComponentStatus.NORMAL },
+          D: { dependencies: [], consumers: [], status: ComponentStatus.NORMAL },
+          E: { dependencies: ["B"], consumers: ["A"], status: ComponentStatus.NORMAL }
         },
         (component: any) =>
           Object.assign(component, { metrics: { throughput: 0, meanResponseTimeMs: 0, errorRate: 0 } })
@@ -63,6 +63,7 @@ describe("service", () => {
         expect(component).toEqual({
           id: existingId,
           dependencies: [],
+          consumers: [],
           status: ComponentStatus.NORMAL,
           metrics: {
             // all metrics will be empty because the test does not set any particular values
@@ -130,7 +131,7 @@ describe("service", () => {
 
       beforeEach(() => {
         state.graph = {
-          A: { status: ComponentStatus.SUSPICIOUS }
+          A: { status: ComponentStatus.CONFIRMED }
         };
       });
 
@@ -148,12 +149,12 @@ describe("service", () => {
         beforeEach(() => {
           state.graph = {
             A: {
-              status: ComponentStatus.SUSPICIOUS,
+              status: ComponentStatus.CONFIRMED,
               dependencies: ["B", "C", "D"]
             },
-            B: { status: ComponentStatus.SUSPICIOUS },
+            B: { status: ComponentStatus.CONFIRMED },
             C: {},
-            D: { status: ComponentStatus.SUSPICIOUS }
+            D: { status: ComponentStatus.CONFIRMED }
           };
         });
 
@@ -161,7 +162,7 @@ describe("service", () => {
 
         describe("and some of them have broken dependencies", () => {
           beforeEach(() => {
-            state.graph.E = { status: ComponentStatus.SUSPICIOUS };
+            state.graph.E = { status: ComponentStatus.CONFIRMED };
             state.graph.D.dependencies = ["E"];
           });
 
@@ -183,11 +184,11 @@ describe("service", () => {
               // F is a hanging tail off of D, the loop is A - D - E - A
               state.graph.D.dependencies = ["E", "F"];
               state.graph.E = {
-                status: ComponentStatus.SUSPICIOUS,
+                status: ComponentStatus.CONFIRMED,
                 dependencies: ["A"]
               };
               state.graph.F = {
-                status: ComponentStatus.SUSPICIOUS
+                status: ComponentStatus.CONFIRMED
               };
             });
 
@@ -196,7 +197,7 @@ describe("service", () => {
           describe("with a hanging tail at the end", () => {
             beforeEach(() => {
               // E is a hanging tail off of D in the loop A - D - A
-              state.graph.E = { status: ComponentStatus.SUSPICIOUS };
+              state.graph.E = { status: ComponentStatus.CONFIRMED };
               state.graph.D.dependencies = ["E", "A"];
             });
 
