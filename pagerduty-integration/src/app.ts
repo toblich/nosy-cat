@@ -16,8 +16,12 @@ process.on("SIGINT", () => {
     consumer.acknowledge(messageList);
     logger.data(`Got Pulsar message: ${messageList.getData()}`);
 
-    for (const msg of JSON.parse(messageList.getData())) {
-      const { type, serviceName, expected, value, message } = msg;
+    for (const msg of [JSON.parse(messageList.getData())]) {
+      logger.debug("msg", msg);
+      const { errorRate, meanResponseTimeMs, throughput } = msg;
+      const error = errorRate || meanResponseTimeMs || throughput;
+
+      const { type, serviceName, expected, value, message } = error;
       try {
         // https://v2.developer.pagerduty.com/docs/send-an-event-events-api-v2
         // "https://events.pagerduty.com/v2/enqueue"
@@ -38,10 +42,12 @@ process.on("SIGINT", () => {
         });
         logger.info(`PagerDuty responded with: ${res.status} ${JSON.stringify(res.body, null, 4)}`);
       } catch (e) {
-        logger.error(`PagerDuty Error: ${e.message} ${JSON.stringify(e.body, null, 4)}`);
+        logger.error(`PagerDuty Error: ${e.message} ${JSON.stringify(e, null, 4)}`);
       }
     }
   }
 
   await consumer.shutdown();
 })();
+
+// 2019-12-08 20:36:36 - data: Got Pulsar message: {"errorRate":{"serviceName":"iam","type":"Error Rate","expected":{"minimum":0,"maximum":0.5},"value":1,"message":"The service iam is presenting an anomaly with the Error rate, the expected value is {\"minimum\":0,\"maximum\":0.5} and the current value is 1"},"meanResponseTimeMs":false,"throughput":false}

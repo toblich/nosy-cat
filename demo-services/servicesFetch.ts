@@ -4,11 +4,11 @@ import { mapValues } from "lodash";
 
 const services = {
   // DockerHost -> Service Name
-  xapi: "xAPI",
-  iam: "IAM",
-  inventory: "Inventory",
-  billing: "Billing",
-  payments: "Payments"
+  xapi: "xapi",
+  iam: "iam",
+  inventory: "inventory",
+  billing: "billing",
+  payments: "payments"
 };
 
 // tslint:disable:next-line: typedef

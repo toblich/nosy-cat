@@ -106,10 +106,10 @@ export class Graph {
 
   public addDependency(from: string, to: string): void {
     if (!this.graph.has(from)) {
-      this.graph.set(from, new Component(from, new Set(to)));
+      this.graph.set(from, new Component(from, new Set([to])));
     }
     if (!this.graph.has(to)) {
-      this.graph.set(to, new Component(to, new Set(), new Set(from)));
+      this.graph.set(to, new Component(to, new Set(), new Set([from])));
     } else {
       this.graph.get(to).addConsumer(from);
     }
