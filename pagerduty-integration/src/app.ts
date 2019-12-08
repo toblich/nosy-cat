@@ -49,5 +49,3 @@ process.on("SIGINT", () => {
 
   await consumer.shutdown();
 })();
-
-// 2019-12-08 20:36:36 - data: Got Pulsar message: {"errorRate":{"serviceName":"iam","type":"Error Rate","expected":{"minimum":0,"maximum":0.5},"value":1,"message":"The service iam is presenting an anomaly with the Error rate, the expected value is {\"minimum\":0,\"maximum\":0.5} and the current value is 1"},"meanResponseTimeMs":false,"throughput":false}
