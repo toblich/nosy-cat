@@ -93,13 +93,15 @@ export async function processComponentCall(producer: PulsarProducer, serviceValu
       )
   );
 
-  const pulsarProducer = await getPulsarProducer("component-alerts");
+  const response = (await graphClient.updateServiceMetrics(component.id, ComponentStatus.CONFIRMED)).body;
+  const newServiceStatus = response[component.id] && response[component.id].to.status;
+  if (newServiceStatus === ComponentStatus.PERPETRATOR) {
+    const pulsarProducer = await getPulsarProducer("component-alerts");
 
-  await pulsarProducer.send({
-    data: Buffer.from(JSON.stringify(errorMessages))
-  });
-
-  await graphClient.updateServiceMetrics(component.id, ComponentStatus.CONFIRMED);
+    await pulsarProducer.send({
+      data: Buffer.from(JSON.stringify(errorMessages))
+    });
+  }
 }
 
 interface Entry {
