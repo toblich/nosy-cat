@@ -114,7 +114,9 @@ describe("when processing a component call", () => {
           }
         }
       };
-      const updateServiceMetrics = jest.fn();
+      const updateServiceMetrics = jest.fn().mockImplementation(async () => ({
+        body: { id: { to: { status: "any-status" } } }
+      }));
 
       beforeAll(async () => {
         client.getService = jest.fn().mockResolvedValue(service);
