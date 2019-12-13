@@ -16,7 +16,6 @@ const otherServices = {
 };
 
 // tslint:disable:next-line typedef
-app.use("/ping", (_, res) => res.send("pong!\n"));
 app.use("/me", (_, res) => res.json({ name: process.env.NAME }));
 
 if (is("xAPI")) {

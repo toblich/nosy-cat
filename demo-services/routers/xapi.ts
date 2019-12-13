@@ -32,6 +32,8 @@ for (const method of ["set", "get", "del"]) {
 router.use(zipkinMiddleware({ tracer, port: Number(process.env.PORT) }));
 
 // tslint:disable:typedef
+router.get("/ping", (_, res) => res.send("pong!\n"));
+
 router.get("/login", async (req, res) => {
   const response = await iamWrapper("http://iam/login");
   // const response = await serviceFetchers.iam("/login");

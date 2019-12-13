@@ -23,12 +23,18 @@ const pool = new ZipkinPostgres.Pool({
 // Add the Zipkin middleware
 router.use(zipkinMiddleware({ tracer, port: Number(process.env.PORT) }));
 
-// tslint:disable-next-line:typedef
+// tslint:disable:typedef
 router.get("/login", async (_, res) => {
   const timestamp = await pool.query("SELECT NOW()");
 
   res.status(200).json({
     accessToken: "uuid"
+  });
+});
+
+router.get("/authorize", async (_, res) => {
+  res.status(503).json({
+    message: "service down"
   });
 });
 
