@@ -15,4 +15,5 @@ const services = {
 const fetchFor = domain => (path, ...args) => fetch(`http://${domain}${path}`, ...args);
 
 // tslint:disable:next-line: typedef
-export default tracer => mapValues(services, (name, domain) => wrap(fetchFor(domain), { tracer, name }));
+export default tracer =>
+  mapValues(services, (remoteServiceName, domain) => wrap(fetchFor(domain), { tracer, remoteServiceName }));

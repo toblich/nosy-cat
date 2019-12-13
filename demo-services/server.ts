@@ -1,6 +1,7 @@
 import * as express from "express";
 import xapiRouter from "./routers/xapi";
 import iamRouter from "./routers/iam";
+import otherRouter from "./routers/other";
 
 const port: number = 80;
 
@@ -16,6 +17,12 @@ const otherServices = {
 };
 
 // tslint:disable:next-line typedef
+app.use("/", (req, res, next) => {
+  res.set("Access-Control-Allow-Origin", "http://localhost:3001");
+  next();
+});
+
+// tslint:disable:next-line typedef
 app.use("/me", (_, res) => res.json({ name: process.env.NAME }));
 
 if (is("xAPI")) {
@@ -24,7 +31,7 @@ if (is("xAPI")) {
   app.use(iamRouter);
 } else {
   // tslint:disable:next-line no-console
-  console.log("Not mounting any particular router");
+  app.use(otherRouter);
 }
 
 // tslint:disable:next-line no-console

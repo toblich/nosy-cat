@@ -39,6 +39,11 @@ const wrappedController: Controller = mapValues(controller, (originalMethod: exp
 const app: express.Application = createZipkinExpress(tracer);
 const port = process.env.PORT || 4000;
 app.set("port", port);
+// tslint:disable-next-line:typedef
+app.use("/", (req, res, next) => {
+  res.set("Access-Control-Allow-Origin", "http://localhost:3001");
+  next();
+});
 const http = new Server(app);
 const io = socketio(http);
 

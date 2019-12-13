@@ -34,8 +34,14 @@ router.use(zipkinMiddleware({ tracer, port: Number(process.env.PORT) }));
 // tslint:disable:typedef
 router.get("/ping", (_, res) => res.send("pong!\n"));
 
+// tslint:disable:typedef
+router.get("/explore", async (_, res) => {
+  await Promise.all(Object.values(serviceFetchers).map(async fetcher => await fetcher("/ping")));
+  res.status(200).json({});
+});
+
 router.get("/login", async (req, res) => {
-  const response = await iamWrapper("http://iam/login");
+  const response = await serviceFetchers.iam("/login");
   // const response = await serviceFetchers.iam("/login");
   //   console.log("response", JSON.stringify(response, null, 2));
   const time = await redis.get("TIME");
@@ -43,7 +49,7 @@ router.get("/login", async (req, res) => {
 });
 
 router.get("/authorize", async (req, res) => {
-  const response = await iamWrapper("http://iam/authorize");
+  const response = await serviceFetchers.iam("/authorize");
   const time = await redis.get("TIME");
   res.status(response.status).json(response.body);
 });
