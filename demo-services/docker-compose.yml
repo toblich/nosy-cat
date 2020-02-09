@@ -7,12 +7,19 @@ x-base-environment: &base-environment
 x-base-networks: &base-networks
   - nosy-cat_nosy-cat
 
+x-base-volumes: &base-volumes
+  - "./nodemon.json:/project/app/nodemon.json"
+  - "./tsconfig.json:/project/app/tsconfig.json"
+  - "./recorder.ts:/project/app/recorder.ts"
+  - "./server.ts:/project/app/server.ts"
+  - "./servicesFetch.ts:/project/app/servicesFetch.ts"
+  - "./routers/:/project/app/routers/"
+
 services:
   xapi:
     build:
       context: .
-    volumes:
-      - "./:/project/app"
+    volumes: *base-volumes
     links:
       - redis
       - iam
@@ -26,8 +33,7 @@ services:
   iam:
     build:
       context: .
-    volumes:
-      - "./:/project/app"
+    volumes: *base-volumes
     links:
       - postgres
     environment:
@@ -38,8 +44,7 @@ services:
   inventory:
     build:
       context: .
-    volumes:
-      - "./:/project/app"
+    volumes: *base-volumes
     environment:
       <<: *base-environment
       NAME: Inventory
@@ -48,8 +53,7 @@ services:
   billing:
     build:
       context: .
-    volumes:
-      - "./:/project/app"
+    volumes: *base-volumes
     environment:
       <<: *base-environment
       NAME: Billing
@@ -58,8 +62,7 @@ services:
   payments:
     build:
       context: .
-    volumes:
-      - "./:/project/app"
+    volumes: *base-volumes
     environment:
       <<: *base-environment
       NAME: Payments
