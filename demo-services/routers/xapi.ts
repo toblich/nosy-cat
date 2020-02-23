@@ -36,7 +36,11 @@ router.get("/ping", (_, res) => res.send("pong!\n"));
 
 // tslint:disable:typedef
 router.get("/explore", async (_, res) => {
-  await Promise.all(Object.values(serviceFetchers).map(async fetcher => await fetcher("/ping")));
+  await Promise.all(
+    Object.entries(serviceFetchers)
+      .filter(([name, $]) => name !== "xapi")
+      .map(async ([$, fetcher]) => await fetcher("/ping"))
+  );
   res.status(200).json({});
 });
 
