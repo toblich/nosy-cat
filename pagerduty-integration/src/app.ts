@@ -3,6 +3,8 @@ import { logger } from "helpers";
 
 import * as superagent from "superagent";
 
+const pdUri = process.env.PD_URI || "https://events.pagerduty.com/v2/enqueue";
+
 let shouldContinue = true;
 process.on("SIGINT", () => {
   shouldContinue = false;
@@ -25,7 +27,7 @@ process.on("SIGINT", () => {
       try {
         // https://v2.developer.pagerduty.com/docs/send-an-event-events-api-v2
         // "https://events.pagerduty.com/v2/enqueue"
-        const res = await superagent.post("https://events.pagerduty.com/v2/enqueue").send({
+        const res = await superagent.post(pdUri).send({
           routing_key: "6e05660959644cedabd1afb3c8abf8b8",
           event_action: "trigger",
           payload: {
