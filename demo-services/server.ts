@@ -9,11 +9,11 @@ const app = express();
 
 const otherServices = {
   // DockerHost -> Service Name
-  xapi: "xAPI",
-  iam: "IAM",
-  inventory: "Inventory",
-  billing: "Billing",
-  payments: "Payments"
+  xapi: "xapi",
+  iam: "iam",
+  inventory: "inventory",
+  billing: "billing",
+  payments: "payments"
 };
 
 // tslint:disable:next-line typedef
@@ -25,9 +25,9 @@ app.use("/", (req, res, next) => {
 // tslint:disable:next-line typedef
 app.use("/me", (_, res) => res.json({ name: process.env.NAME }));
 
-if (is("xAPI")) {
+if (is("xapi")) {
   app.use(xapiRouter);
-} else if (is("IAM")) {
+} else if (is("iam")) {
   app.use(iamRouter);
 } else {
   // tslint:disable:next-line no-console

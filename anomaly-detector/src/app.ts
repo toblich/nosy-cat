@@ -19,22 +19,6 @@ const { tracer } = createZipkinContextTracer("anomaly-detector");
 
 consume(tracer, "dependency-detector", onEveryMessage);
 
-// Test pulsar method
-// (async (): Promise<void> => {
-//   const pulsarProducer = await getPulsarProducer("component-alerts");
-
-//   // tslint:disable-next-line: one-variable-per-declaration
-//   const serviceName = "Test",
-//     type = MetricTypes.errorRate,
-//     threshold = -1,
-//     value = -100;
-//   logger.info("Sending test pulsar message");
-//   await pulsarProducer.send({
-//     data: Buffer.from(JSON.stringify([getMetricErrorMessage(type, value, threshold, serviceName)]))
-//   });
-//   logger.info("Test pulsar message sent!");
-// })();
-
 const graphClient = generateGraphClient(
   `http://${process.env.GRAPH_HOST || "localhost"}:${process.env.GRAPH_PORT || 4000}`
 );

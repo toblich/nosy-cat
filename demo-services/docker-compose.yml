@@ -20,7 +20,7 @@ services:
       - "7000:80"
     environment:
       <<: *base-environment
-      NAME: xAPI
+      NAME: xapi
     networks: *base-networks
 
   iam:
@@ -32,7 +32,7 @@ services:
       - postgres
     environment:
       <<: *base-environment
-      NAME: IAM
+      NAME: iam
     networks: *base-networks
 
   inventory:
@@ -42,7 +42,7 @@ services:
       - "./:/project/app"
     environment:
       <<: *base-environment
-      NAME: Inventory
+      NAME: inventory
     networks: *base-networks
 
   billing:
@@ -52,7 +52,7 @@ services:
       - "./:/project/app"
     environment:
       <<: *base-environment
-      NAME: Billing
+      NAME: billing
     networks: *base-networks
 
   payments:
@@ -62,7 +62,7 @@ services:
       - "./:/project/app"
     environment:
       <<: *base-environment
-      NAME: Payments
+      NAME: payments
     networks: *base-networks
 
   redis:
