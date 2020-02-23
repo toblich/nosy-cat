@@ -43,8 +43,13 @@ export function findRootCauses(req: ComponentIdReq, res: Response): void {
   res.json(causes);
 }
 
-export function updateComponentStatus(req: UpdateComponentStatusReq, res: Response): void {
+export async function updateComponentStatus(req: UpdateComponentStatusReq, res: Response): Promise<void> {
   const { component, status } = req.body;
-  service.updateComponentStatus(component, status);
-  res.status(200).send();
+  const changes = await service.updateComponentStatus(component, status);
+  res.status(200).json(changes);
+}
+
+export async function resetGraph(req: EmptyReq, res: Response): Promise<void> {
+  await service.clear();
+  res.status(204).send();
 }
