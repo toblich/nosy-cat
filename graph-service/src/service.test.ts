@@ -21,20 +21,20 @@ describe("service", () => {
 
     beforeEach(async () => {
       toAdd = [
-        { caller: "A", callee: "B" },
-        { caller: "C" },
-        { callee: "D" },
-        { caller: "A", callee: "E" },
-        { caller: "E", callee: "B" }
+        { caller: "Alice", callee: "Bob" },
+        { caller: "Carl" },
+        { callee: "David" },
+        { caller: "Alice", callee: "Eric" },
+        { caller: "Eric", callee: "Bob" }
       ];
 
       expected = mapValues(
         {
-          A: { dependencies: ["B", "E"], consumers: [], status: ComponentStatus.NORMAL },
-          B: { dependencies: [], consumers: ["A", "E"], status: ComponentStatus.NORMAL },
-          C: { dependencies: [], consumers: [], status: ComponentStatus.NORMAL },
-          D: { dependencies: [], consumers: [], status: ComponentStatus.NORMAL },
-          E: { dependencies: ["B"], consumers: ["A"], status: ComponentStatus.NORMAL }
+          Alice: { dependencies: ["Bob", "Eric"], consumers: [], status: ComponentStatus.NORMAL },
+          Bob: { dependencies: [], consumers: ["Alice", "Eric"], status: ComponentStatus.NORMAL },
+          Carl: { dependencies: [], consumers: [], status: ComponentStatus.NORMAL },
+          David: { dependencies: [], consumers: [], status: ComponentStatus.NORMAL },
+          Eric: { dependencies: ["Bob"], consumers: ["Alice"], status: ComponentStatus.NORMAL }
         },
         (component: any) =>
           Object.assign(component, { metrics: { throughput: 0, meanResponseTimeMs: 0, errorRate: 0 } })
@@ -122,7 +122,7 @@ describe("service", () => {
       findRootCauseTest("Z", httpErrors.NotFound, { graph: {} }));
 
     describe("when the initial component exists and is healthy", () =>
-      findRootCauseTest("A", [], { graph: { A: {} } }));
+      findRootCauseTest("Alice", [], { graph: { Alice: {} } }));
 
     describe("when the initial component exists and is anomalous", () => {
       const state: any = {
@@ -131,77 +131,78 @@ describe("service", () => {
 
       beforeEach(() => {
         state.graph = {
-          A: { status: ComponentStatus.CONFIRMED }
+          Alice: { status: ComponentStatus.CONFIRMED }
         };
       });
 
-      describe("and it has no dependencies", () => findRootCauseTest("A", ["A"], state));
+      describe("and it has no dependencies", () => findRootCauseTest("Alice", ["Alice"], state));
 
       describe("and it has all healthy dependencies", () => {
         beforeEach(() => {
-          state.graph.A.dependencies = ["B", "C"];
+          state.graph.Alice.dependencies = ["Bob", "Carl"];
         });
 
-        findRootCauseTest("A", ["A"], state);
+        findRootCauseTest("Alice", ["Alice"], state);
       });
 
       describe("and it has some broken dependencies", () => {
         beforeEach(() => {
           state.graph = {
-            A: {
+            Alice: {
               status: ComponentStatus.CONFIRMED,
-              dependencies: ["B", "C", "D"]
+              dependencies: ["Bob", "Carl", "David"]
             },
-            B: { status: ComponentStatus.CONFIRMED },
-            C: {},
-            D: { status: ComponentStatus.CONFIRMED }
+            Bob: { status: ComponentStatus.CONFIRMED },
+            Carl: {},
+            David: { status: ComponentStatus.CONFIRMED }
           };
         });
 
-        describe("and none of them have broken dependencies", () => findRootCauseTest("A", ["B", "D"], state));
+        describe("and none of them have broken dependencies", () =>
+          findRootCauseTest("Alice", ["Bob", "David"], state));
 
         describe("and some of them have broken dependencies", () => {
           beforeEach(() => {
-            state.graph.E = { status: ComponentStatus.CONFIRMED };
-            state.graph.D.dependencies = ["E"];
+            state.graph.Eric = { status: ComponentStatus.CONFIRMED };
+            state.graph.David.dependencies = ["Eric"];
           });
 
-          findRootCauseTest("A", ["B", "E"], state);
+          findRootCauseTest("Alice", ["Bob", "Eric"], state);
         });
 
         describe("and there is a cycle in the anomalous chain", () => {
           describe("with a hanging tail at the beginning", () => {
             beforeEach(() => {
               // B is the hanging tail off of A in the loop A - D - A
-              state.graph.D.dependencies = ["A"];
+              state.graph.David.dependencies = ["Alice"];
             });
 
-            findRootCauseTest("A", ["A", "B", "D"], state);
+            findRootCauseTest("Alice", ["Alice", "Bob", "David"], state);
           });
 
           describe("with a hanging tail in the middle", () => {
             beforeEach(() => {
               // F is a hanging tail off of D, the loop is A - D - E - A
-              state.graph.D.dependencies = ["E", "F"];
-              state.graph.E = {
+              state.graph.David.dependencies = ["Eric", "Fred"];
+              state.graph.Eric = {
                 status: ComponentStatus.CONFIRMED,
-                dependencies: ["A"]
+                dependencies: ["Alice"]
               };
-              state.graph.F = {
+              state.graph.Fred = {
                 status: ComponentStatus.CONFIRMED
               };
             });
 
-            findRootCauseTest("A", ["B", "D", "E", "A", "F"], state);
+            findRootCauseTest("Alice", ["Bob", "David", "Eric", "Alice", "Fred"], state);
           });
           describe("with a hanging tail at the end", () => {
             beforeEach(() => {
               // E is a hanging tail off of D in the loop A - D - A
-              state.graph.E = { status: ComponentStatus.CONFIRMED };
-              state.graph.D.dependencies = ["E", "A"];
+              state.graph.Eric = { status: ComponentStatus.CONFIRMED };
+              state.graph.David.dependencies = ["Eric", "Alice"];
             });
 
-            findRootCauseTest("A", ["B", "D", "E", "A"], state);
+            findRootCauseTest("Alice", ["Bob", "David", "Eric", "Alice"], state);
           });
         });
       });
