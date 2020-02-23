@@ -2,9 +2,12 @@ import { BatchRecorder, jsonEncoder as JSONEncoder } from "zipkin";
 import * as fetch from "node-fetch";
 
 // Send spans to Zipkin asynchronously over HTTP
-const INGRESS_HOST = process.env.INGRESS_HOST || "localhost";
-const INGRESS_PORT = process.env.INGRESS_PORT || 3000;
+const INGRESS_HOST = process.env.INGRESS_HOST;
+const INGRESS_PORT = process.env.INGRESS_PORT;
 
+if (!INGRESS_HOST || !INGRESS_PORT) {
+  throw Error("Missing ingress host values");
+}
 const zipkinBaseUrl = `http://${INGRESS_HOST}:${INGRESS_PORT}`;
 
 // tslint:disable-next-line:no-var-requires

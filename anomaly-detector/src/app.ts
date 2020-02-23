@@ -19,9 +19,11 @@ const { tracer } = createZipkinContextTracer("anomaly-detector");
 
 consume(tracer, "dependency-detector", onEveryMessage);
 
-const graphClient = generateGraphClient(
-  `http://${process.env.GRAPH_HOST || "localhost"}:${process.env.GRAPH_PORT || 4000}`
-);
+if (!process.env.GRAPH_PORT || !process.env.GRAPH_HOST) {
+  throw Error("Missing Graph host values");
+}
+
+const graphClient = generateGraphClient(`http://${process.env.GRAPH_HOST}:${process.env.GRAPH_PORT}`);
 
 // ---
 
