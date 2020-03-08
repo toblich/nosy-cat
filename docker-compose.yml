@@ -103,8 +103,24 @@ services:
     command: *base-command
     links:
       - redis
+      - neo4j
     environment:
       <<: *base-environment
+    networks:
+      - default
+
+  neo4j:
+    image: bitnami/neo4j:4
+    ports:
+      - "7474:7474" # http
+      - '7473:7473' # https
+      - "7687:7687" # bolt
+    ## Uncomment the following lines to enable data persistence
+    # volumes:
+    #   - "./graph-data:/bitnami"
+    environment:
+      NEO4J_HOST: localhost # advertise as localhost so that the default browser link has that
+      NEO4J_dbms_connector_bolt_address: "0.0.0.0" # allow connections from anywhere
     networks:
       - default
 
