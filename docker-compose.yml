@@ -14,7 +14,7 @@ x-base-environment: &base-environment
   KAFKA: kafka:9093
   REDIS_HOST: redis
   GRAPH_HOST: graph-service
-  GRAPH_PORT: 4000
+  GRAPH_PORT: "4000"
 
 ############
 # SERVICES #
