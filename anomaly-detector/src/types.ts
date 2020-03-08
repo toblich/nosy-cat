@@ -1,11 +1,5 @@
 import { Dictionary } from "helpers";
 
-export enum MetricTypes {
-  errorRate = "Error Rate",
-  throughput = "Throughput",
-  meanResponseTimeMs = "Mean Response Time"
-}
-
 export interface Range {
   minimum: number;
   maximum: number;

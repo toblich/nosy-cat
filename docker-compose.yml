@@ -9,13 +9,12 @@ x-base-build: &base-build
 
 x-base-command: &base-command sh -c "npm run start:dockerized"
 x-base-kafka-command: &base-kafka-command sh -c "./wait-for-it.sh $$KAFKA -t 30 -- npm run start:dockerized"
-x-base-kafka-pulsar-command: &base-kafka-pulsar-command sh -c "./wait-for-it.sh $$KAFKA -- ./wait-for-it.sh $$PULSAR -t 60 -- npm run start:dockerized"
 
 x-base-environment: &base-environment
   KAFKA: kafka:9093
   REDIS_HOST: redis
   GRAPH_HOST: graph-service
-  PULSAR: "pulsar:6650"
+  GRAPH_PORT: "4000"
 
 ############
 # SERVICES #
@@ -69,7 +68,6 @@ services:
       <<: *base-build
       args:
         - SERVICE=anomaly-detector
-        - INSTALL_PULSAR=true
     volumes:
       - "./nodemon.json:/project/nodemon.json"
       - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
@@ -77,13 +75,12 @@ services:
       - "./helpers/src:/project/helpers/src"
       - "./anomaly-detector/tsconfig.json:/project/app/tsconfig.json"
       - "./anomaly-detector/src:/project/app/src"
-    command: *base-kafka-pulsar-command
+    command: *base-kafka-command
     links:
       - graph-service
       - kafka
-      - pulsar
     depends_on:
-      - pulsar
+      - kafka
     environment:
       <<: *base-environment
     networks:
@@ -116,7 +113,6 @@ services:
       <<: *base-build
       args:
         - SERVICE=pagerduty-integration
-        - INSTALL_PULSAR=true
     volumes:
       - "./nodemon.json:/project/nodemon.json"
       - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
@@ -124,9 +120,11 @@ services:
       - "./helpers/src:/project/helpers/src"
       - "./pagerduty-integration/tsconfig.json:/project/app/tsconfig.json"
       - "./pagerduty-integration/src:/project/app/src"
-    command: *base-kafka-pulsar-command
+    command: *base-kafka-command
     links:
-      - pulsar
+      - kafka
+    depends_on:
+      - kafka
     environment:
       <<: *base-environment
     networks:
@@ -169,33 +167,6 @@ services:
     links:
       - redis
     command: redis-cli -h redis
-    networks:
-      - default
-
-  pulsar:
-    image: apachepulsar/pulsar
-    expose:
-      - 8080
-      - 6650
-    environment:
-      - PULSAR_MEM=" -Xms512m -Xmx512m -XX:MaxDirectMemorySize=1g"
-    command: >
-      /bin/bash -c
-      "bin/apply-config-from-env.py conf/pulsar.conf
-      && bin/pulsar standalone"
-    volumes:
-      - "./pulsar.conf:/pulsar/conf/pulsar.conf"
-    networks:
-      - default
-
-  pulsar-dashboard:
-    image: apachepulsar/pulsar-dashboard
-    depends_on:
-      - pulsar
-    ports:
-      - "80:80"
-    environment:
-      - SERVICE_URL=http://pulsar:8080
     networks:
       - default
 

@@ -19,6 +19,4 @@
 !pagerduty-integration/src
 !pagerduty-integration/*.json
 
-!pulsar-assets/
-
 !wait-for-it.sh

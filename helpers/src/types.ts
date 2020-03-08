@@ -14,6 +14,12 @@ export enum ZipkinSpanKind {
   CLIENT = "CLIENT"
 }
 
+export enum MetricTypes {
+  errorRate = "Error Rate",
+  throughput = "Throughput",
+  meanResponseTimeMs = "Mean Response Time"
+}
+
 export interface ZipkinSpan {
   traceId: string;
   parentId: string;
@@ -97,6 +103,14 @@ export type UpdateComponentStatusReq = ExpressReq<{
   component: string;
   status: ComponentStatus;
 }>;
+
+export interface Alert {
+  serviceName: string;
+  type: MetricTypes;
+  expected: number;
+  value: number;
+  message: string;
+}
 
 export type ComponentIdReq = ExpressReq<{ component: string }>;
 

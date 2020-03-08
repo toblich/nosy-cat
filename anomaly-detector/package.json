@@ -9,14 +9,13 @@
     "build-helpers": "cd ../helpers && npm run build && cd -",
     "start:dockerized": "npm run build-helpers && npm run start",
     "start:prod": "node ./build/app.js",
-    "test": "jest --forceExit --detectOpenHandles --coverage --verbose"
+    "test": "GRAPH_HOST=localhost GRAPH_PORT=4000 jest --forceExit --detectOpenHandles --coverage --verbose"
   },
   "author": "",
   "license": "BSD-3-Clause",
   "dependencies": {
     "helpers": "file:../helpers",
-    "lodash": "^4.17.15",
-    "pulsar-client": "^1.0.0"
+    "lodash": "^4.17.15"
   },
   "devDependencies": {
     "@types/jest": "^24.0.19",
@@ -26,7 +25,7 @@
     "ts-node": "^8.3.0",
     "ts-jest": "^24.0.2",
     "jest": "^24.9.0",
-    "typescript": "^3.5.3",
+    "typescript": "^3.8.3",
     "zipkin": "^0.18.6"
   }
 }
