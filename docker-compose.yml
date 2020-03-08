@@ -119,7 +119,7 @@ services:
     # volumes:
     #   - "./graph-data:/bitnami"
     environment:
-      NEO4J_HOST: localhost # advertise host as the docker-compose domain
+      NEO4J_HOST: localhost # advertise as localhost so that the default browser link has that
       NEO4J_dbms_connector_bolt_address: "0.0.0.0" # allow connections from anywhere
     networks:
       - default
