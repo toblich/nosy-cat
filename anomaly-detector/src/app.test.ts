@@ -1,13 +1,7 @@
 import * as Helpers from "helpers";
-import * as Pulsar from "./pulsar";
 
 const client: any = {};
 const clientMock = jest.spyOn(Helpers, "generateGraphClient").mockImplementationOnce(() => client as any);
-const pulsarClient = jest.spyOn(Pulsar, "getPulsarProducer").mockImplementation(async () => ({
-  send: jest.fn(),
-  close: jest.fn(),
-  flush: jest.fn()
-}));
 
 import { processComponentCall } from "./app";
 import { ComponentStatus } from "helpers";
