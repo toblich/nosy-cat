@@ -9,9 +9,17 @@ import { mapValues } from "lodash";
 import * as controller from "./controller";
 import * as middlewares from "./middlewares";
 
+import Repository from "./repository";
+
 const { tracer } = createZipkinContextTracer("graph-service");
 
 // ---
+
+if (!process.env.NEO4J_HOST) {
+  throw Error("NEO4J_HOST must be set!");
+}
+// tslint:disable-next-line: no-unused-expression
+new Repository(); // TODO
 
 ////////////////////
 // Wrap controller
