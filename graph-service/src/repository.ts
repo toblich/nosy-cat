@@ -5,6 +5,16 @@ import * as neo4j from "neo4j-driver";
 import { Component } from "./Graph";
 import { Request } from "express";
 
+enum STATUS {
+  Normal = "Normal",
+  Abnormal = "Abnormal"
+}
+
+const ANTISTATUS = {
+  [STATUS.Normal]: STATUS.Abnormal,
+  [STATUS.Abnormal]: STATUS.Normal
+};
+
 export type Result = neo4j.QueryResult;
 export type Transaction = neo4j.Transaction;
 
@@ -12,7 +22,7 @@ export default class Repository {
   private driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"));
 
   public constructor() {
-    this.initialize();
+    // this.initialize();
   }
 
   private async initialize(): Promise<void> {
@@ -67,7 +77,8 @@ export default class Repository {
     return tx;
   }
 
-  private async run(query: string, parameters?: any, tx?: Transaction, config?: any): Promise<Result> {
+  // TODO make private and move external usages to calls to methods in this class
+  public async run(query: string, parameters?: any, tx?: Transaction, config?: any): Promise<Result> {
     if (tx) {
       return tx.run(query, parameters);
     }
@@ -139,7 +150,7 @@ export default class Repository {
       return this.run(
         `
           MERGE (callee:Component {id: $callee})
-            ON CREATE SET callee = $metrics, callee.id = $callee, callee.count = 1
+            ON CREATE SET callee = $metrics, callee.id = $callee, callee.count = 1, callee:${STATUS.Normal}
             ON MATCH SET callee.count = callee.count + 1
         `, // TODO update metrics
         { callee, metrics },
@@ -149,9 +160,9 @@ export default class Repository {
     return this.run(
       `
         MERGE (caller:Component {id: $caller})
-          ON CREATE SET caller = $emptyMetrics, caller.id = $caller, caller.count = 1
+          ON CREATE SET caller = $emptyMetrics, caller.id = $caller, caller.count = 1, caller:${STATUS.Normal}
         MERGE (callee:Component {id: $callee})
-          ON CREATE SET callee = $metrics, callee.id = $callee, callee.count = 1
+          ON CREATE SET callee = $metrics, callee.id = $callee, callee.count = 1, callee:${STATUS.Normal}
           ON MATCH SET callee.count = callee.count + 1
         MERGE (caller)-[:CALLS]->(callee)
       `,
@@ -181,6 +192,24 @@ export default class Repository {
     console.log("dependencies", dependencies);
     // return new Component(node.properties.id);
     return new Component("hardcoded-test-name");
+  }
+
+  public async setStatus(id: string, status: string): Promise<Result> {
+    const antistatus = ANTISTATUS[status];
+    if (!status || !antistatus) {
+      logger.warn(`Trying to set invalid status (id: ${id}, status: ${status})`);
+      throw Error("InvalidStatus");
+    }
+    logger.info(`Setting status ${id} ${status}`);
+    return this.run(
+      `
+      MATCH (x :Component {id: $id})
+      SET x:${status}
+      REMOVE x:${antistatus}
+      RETURN x
+    `,
+      { id }
+    );
   }
 
   /**

@@ -9,9 +9,10 @@ import {
   UIGraph
 } from "helpers";
 import * as service from "./service";
-
+import * as graphService from "./graphService";
 export async function addComponentsAndDependencies(req: AddComponentsReq, res: Response): Promise<void> {
   await Promise.all(req.body.map((component: ComponentCall) => service.add(component)));
+  await graphService.add(req.body);
   res.status(201).send();
 }
 
