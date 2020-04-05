@@ -16,13 +16,14 @@ const ANTISTATUS = {
 };
 
 export type Result = neo4j.QueryResult;
+export type Record = neo4j.Record;
 export type Transaction = neo4j.Transaction;
 
 export default class Repository {
   private driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"));
 
   public constructor() {
-    // this.initialize();
+    this.initialize();
   }
 
   private async initialize(): Promise<void> {
@@ -35,26 +36,6 @@ export default class Repository {
         throw error;
       }
     }
-
-    // try {
-    //   await thi
-    //   await this.addComponent("xapi");
-    //   await this.addComponent("iam");
-    //   await this.addComponent("2");
-    //   await this.addComponent("3");
-    //   await this.addComponent("4");
-    //   await this.addDependency("xapi", "iam");
-    //   await this.addDependency("xapi", "2");
-    //   await this.addDependency("xapi", "3");
-    //   await this.addDependency("xapi", "4");
-    //   const result = await this.run(`Match (n) Return n`);
-    //   console.log("------------------------------------------------");
-    //   result.records.map((r: neo4j.Record) => console.log(JSON.stringify(r.get("n"), null, 4)));
-    //   console.log(JSON.stringify(result, null, 4));
-    //   await this.getComponent("xapi");
-    // } catch (e) {
-    //   console.log(e);
-    // }
   }
 
   private session(...args: any): neo4j.Session {
@@ -105,34 +86,6 @@ export default class Repository {
     return result;
   }
 
-  /**
-   * Creates a new Component in the Database
-   *
-   * @param id - The id of the new component
-   *
-   * addComponent
-   */
-  public addComponent(id: string, tx?: Transaction): Promise<Result> {
-    return this.run(`MERGE (component:Component:Normal {id: $id}) RETURN component.id as id`, { id }, tx);
-  }
-
-  /**
-   * Creates a dependency between two components in the Database
-   *
-   * @param from - Id of the component on the origin of the dependency
-   * @param to - Id of the component on the end of the dependency
-   */
-  public async addDependency(from: string, to: string, tx?: Transaction): Promise<Result> {
-    const result = await this.run(
-      `MATCH (from:Component {id: $from}),(to:Component {id: $to})
-    MERGE (from)-[r:CALLS]->(to)
-    RETURN from, type(r) as type, to`,
-      { from, to },
-      tx
-    );
-    return result;
-  }
-
   public async addCall(
     caller: string | undefined,
     callee: string,
@@ -150,8 +103,14 @@ export default class Repository {
       return this.run(
         `
           MERGE (callee:Component {id: $callee})
-            ON CREATE SET callee = $metrics, callee.id = $callee, callee.count = 1, callee:${STATUS.Normal}
-            ON MATCH SET callee.count = callee.count + 1
+            ON CREATE SET
+              callee = $metrics,
+              callee.id = $callee,
+              callee.count = 1,
+              callee.status = "${STATUS.Normal}",
+              callee:${STATUS.Normal}
+            ON MATCH SET
+              callee.count = callee.count + 1
         `, // TODO update metrics
         { callee, metrics },
         tx
@@ -160,11 +119,24 @@ export default class Repository {
     return this.run(
       `
         MERGE (caller:Component {id: $caller})
-          ON CREATE SET caller = $emptyMetrics, caller.id = $caller, caller.count = 1, caller:${STATUS.Normal}
+          ON CREATE SET
+            caller = $emptyMetrics,
+            caller.id = $caller,
+            caller.count = 1,
+            caller.status = "${STATUS.Normal}",
+            caller:${STATUS.Normal}
         MERGE (callee:Component {id: $callee})
-          ON CREATE SET callee = $metrics, callee.id = $callee, callee.count = 1, callee:${STATUS.Normal}
-          ON MATCH SET callee.count = callee.count + 1
-        MERGE (caller)-[:CALLS]->(callee)
+          ON CREATE SET
+            callee = $metrics,
+            callee.id = $callee,
+            callee.count = 1,
+            callee.status = "${STATUS.Normal}",
+            callee:${STATUS.Normal}
+          ON MATCH SET
+            callee.count = callee.count + 1
+        MERGE (caller)-[r:CALLS]->(callee)
+          ON CREATE SET
+            r.callee_is = callee.status
       `,
       { caller, callee, metrics, emptyMetrics },
       tx
@@ -203,12 +175,14 @@ export default class Repository {
     logger.info(`Setting status ${id} ${status}`);
     return this.run(
       `
-      MATCH (x :Component {id: $id})
-      SET x:${status}
-      REMOVE x:${antistatus}
-      RETURN x
-    `,
-      { id }
+        MATCH (x :Component {id: $id})
+        SET x:${status}, x.status = $status
+        REMOVE x:${antistatus}
+        WITH x
+        MATCH ()-[r:CALLS]->(x)
+        SET r.callee_is = $status
+      `,
+      { id, status }
     );
   }
 
@@ -223,8 +197,10 @@ export default class Repository {
     return false;
   }
 
-  public async clear(): Promise<Result> {
+  public async clear(): Promise<void> {
     logger.debug("Clearing the entire graph (delete everything!");
-    return this.run(`MATCH (x) DETACH DELETE x`);
+    await this.run(`MATCH (x) DETACH DELETE x`);
+    await this.initialize();
+    return;
   }
 }
