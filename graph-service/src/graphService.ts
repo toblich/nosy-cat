@@ -158,9 +158,11 @@ export async function findRootCauses(initialId: string): Promise<Result> {
   return findEnds(initialId, abnormalSubgraph);
 }
 
-async function toEntity(queryResult: Result, tx: Transaction): Promise<any> {
+async function toEntity(queryResult: Result, tx?: Transaction): Promise<any> {
   // TODO map from a neo4j results representation to an in-memory JS object that is easy to traverse
   // This will require querying the DB again to fetch outgoing relations, since we only have the nodes
+  const ids: string[] = queryResult.records.map((record: Record) => record.get("resultNode").properties.id);
+
   throw new NotImplementedError();
 }
 

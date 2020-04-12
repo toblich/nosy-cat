@@ -1,0 +1,51 @@
+version: "3.7"
+
+# Using base extension fields to avoid extra repetition
+# See https://docs.docker.com/compose/compose-file/#extension-fields for details
+
+x-base-build: &base-build
+  context: .
+  dockerfile: service.dockerfile
+
+x-base-command: &base-command sh -c "npm run start:dockerized"
+
+services:
+    graph-service:
+        build:
+          <<: *base-build
+          args:
+            - SERVICE=graph-service
+        ports:
+          - "4000:4000"
+          - "7474:7474" # http
+          - "7473:7473" # https
+          - "7687:7687" # bolt
+        volumes:
+          - "./nodemon.json:/project/nodemon.json"
+          - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+          - "./helpers/declarations:/project/helpers/declarations"
+          - "./helpers/src:/project/helpers/src"
+          - "./graph-service/tsconfig.json:/project/app/tsconfig.json"
+          - "./graph-service/src:/project/app/src"
+        command: sh -c "./wait-for-it.sh $$NEO4J_HOST:7687 -t 30 -- npm run start:dockerized"
+        links:
+          - redis
+          # - neo4j
+        environment:
+          <<: *base-environment
+          NEO4J_HOST: neo4j://localhost:7687
+        networks:
+          - default
+
+    neo4j:
+        image: bitnami/neo4j:4
+        ## Uncomment the following lines to enable data persistence
+        # volumes:
+        #   - "./graph-data:/bitnami"
+        environment:
+            NEO4J_HOST: localhost # advertise as neo4j so that calls from other containers get the domain right
+            NEO4J_dbms_connector_bolt_address: "0.0.0.0" # allow connections from anywhere
+            NEO4J_dbms_connector_http_address: "0.0.0.0" # allow connections from anywhere
+            NEO4J_dbms_connector_https_address: "0.0.0.0" # allow connections from anywhere
+        network_mode: service:graph-service
+

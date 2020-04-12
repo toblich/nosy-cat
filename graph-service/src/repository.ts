@@ -17,7 +17,7 @@ const ANTISTATUS = {
 
 export type Result = neo4j.QueryResult;
 export type Record = neo4j.Record;
-export type Transaction = neo4j.Transaction;
+export type Transaction = neo4j.Transaction & { debugId?: number };
 
 export default class Repository {
   private driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"));
@@ -44,7 +44,7 @@ export default class Repository {
 
   public transaction(): Transaction {
     const session = this.session();
-    const tx = session.beginTransaction();
+    const tx: Transaction = session.beginTransaction();
     const commit = tx.commit.bind(tx);
     tx.commit = async (): Promise<void> => {
       await commit();
@@ -55,6 +55,7 @@ export default class Repository {
       await rollback();
       await session.close();
     };
+    tx.debugId = Math.floor(Math.random() * 10000); // for debugging purposes
     return tx;
   }
 
@@ -92,7 +93,7 @@ export default class Repository {
     metrics: ComponentCallMetrics,
     tx?: Transaction
   ): Promise<Result> {
-    logger.debug(`Adding call with args (${caller}, ${callee}, ${metrics}, ${tx})`);
+    logger.debug(`Adding call with args (${caller}, ${callee}, ${JSON.stringify(metrics)}, ${tx ? tx.debugId : "no-tx"})`);
     const emptyMetrics: ComponentCallMetrics = {
       // TODO update metrics
       duration: 0,
@@ -166,14 +167,14 @@ export default class Repository {
     return new Component("hardcoded-test-name");
   }
 
-  public async setStatus(id: string, status: string): Promise<Result> {
+  public async setStatus(id: string, status: string, tx?: Transaction): Promise<Result> {
     const antistatus = ANTISTATUS[status];
     if (!status || !antistatus) {
-      logger.warn(`Trying to set invalid status (id: ${id}, status: ${status})`);
+      logger.warn(`Trying to set invalid status (id: ${id}, status: ${status}, tx: ${tx ? tx.debugId : "no-tx"})`);
       throw Error("InvalidStatus");
     }
-    logger.info(`Setting status ${id} ${status}`);
-    return this.run(
+    logger.info(`Setting status ${id} ${status} (${tx ? `tx:${tx.debugId}` : "no-tx"})`);
+    return (tx || this).run(
       `
         MATCH (x :Component {id: $id})
         SET x:${status}, x.status = $status
