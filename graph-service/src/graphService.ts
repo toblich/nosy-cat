@@ -1,5 +1,7 @@
 import * as httpErrors from "http-errors";
 
+import { keyBy, flatMap, takeRightWhile, uniqBy } from "lodash";
+
 import {
   Component as HelperComponent,
   ComponentStatus,
@@ -10,7 +12,7 @@ import {
   UIEdge,
   UIGraph,
   status,
-  logger
+  logger,
 } from "helpers";
 
 import Repository, { Result, Record, Transaction } from "./repository";
@@ -19,8 +21,15 @@ import { Component } from "./Graph";
 export const defaultTestMetrics = {
   duration: 1,
   errored: true,
-  timestamp: Date.now()
+  timestamp: Date.now(),
 };
+
+interface Node {
+  id: string;
+  dependencies?: Set<string>;
+  depsArray: string[];
+  // TODO include and shape metrics here
+}
 
 const repository = new Repository();
 
@@ -51,7 +60,7 @@ repository.clear().then(async () => {
       "XY",
       "YX",
       "XZ",
-      "YZ"
+      "YZ",
     ]
       .map((s: string) => Array.from(s))
       .map(([caller, callee]: string[]) => ({ caller, callee, metrics: defaultTestMetrics }))
@@ -60,7 +69,7 @@ repository.clear().then(async () => {
   await add([
     ...componentCalls,
     { callee: "_", metrics: defaultTestMetrics },
-    { callee: "$", metrics: defaultTestMetrics }
+    { callee: "$", metrics: defaultTestMetrics },
   ]);
 
   // Set abnormal statuses
@@ -68,23 +77,32 @@ repository.clear().then(async () => {
 
   // Test root causes search
   const cases = [
-    ["A", "Causal chain", "BCGHIJKNO"],
+    ["A", "Causal chain", "ABCGHIJKNO"],
     ["B", "Causal chain", "BCGHIJKNO"],
     ["C", "Causal chain", "BCGHIJKNO"],
-    ["M", "Causal chain", "BCGHIJKNO"],
+    ["D", "Causal chain", ""], // Node is healthy
+    ["L", "Causal chain", ""], // Node is healthy
+    ["M", "Causal chain", "MBCGHIJKNO"],
     ["G", "Causal chain", "GHIJ"],
-    ["N", "Causal chain", "O"],
-    ["O", "Causal chain", ""],
-    ["K", "Causal chain", ""],
-    ["_", "Causal chain", ""],
+    ["N", "Causal chain", "NO"],
+    ["O", "Causal chain", "O"],
+    ["K", "Causal chain", "K"],
+    ["_", "Causal chain", "_"],
     ["$", "Causal chain", ""],
     ["X", "Causal chain", "XYZ"],
     ["Y", "Causal chain", "XYZ"],
-    ["Z", "Causal chain", ""],
-    ["Z", "Root causes", ""]
+    ["Z", "Causal chain", "Z"],
+    ["Z", "Root causes", "Z"],
+    ["A", "Root causes", ""], // TODO complete expected values
+    ["B", "Root causes", ""], // TODO complete expected values
+    // TODO add more cases
   ];
-  for (const [initialId, op, ex] of cases) {
-    await testHelper(initialId, op, ex);
+  for (const [initialId, operation, expected] of cases) {
+    try {
+      await testHelper(initialId, operation, expected);
+    } catch (error) {
+      logger.error(`${operation} for ${initialId} errored with ${error.stack}`);
+    }
   }
 });
 
@@ -92,28 +110,22 @@ async function testHelper(initialId: string, operation: string, expectedUnsorted
   if (!["Root causes", "Causal chain"].includes(operation)) {
     throw new Error(`Unsupported test operation: ${operation}`);
   }
-  const method = operation === "Root causes" ? findRootCauses : findCausalChain;
-  const expected = Array.from(expectedUnsorted)
-    .sort()
-    .join("");
+  const expected = Array.from(expectedUnsorted).sort().join("");
 
-  // tslint:disable-next-line: typedef
-  try {
-    const results = (await method(initialId)).records
-      .map((record: Record) => record.get("resultNode").properties.id)
-      .sort()
-      .join("");
+  const idsArray =
+    operation === "Root causes"
+      ? (await findRootCauses(initialId)).map((r: Node) => r.id)
+      : (await findCausalChain(initialId)).map((r: Node) => r.id);
 
-    if (results === expected) {
-      logger.info(`${operation} for ${initialId} are the expected ones!`);
-    } else {
-      logger.error(`${operation} for ${initialId} did not match the expected ones
-      Expected: "${expected}"
-      Actual:   "${results}"
-      `);
-    }
-  } catch (error) {
-    logger.error(`${operation} for ${initialId} errored with ${error.stack}`);
+  const results = idsArray.sort().join("");
+
+  if (results === expected) {
+    logger.info(`${operation} for ${initialId} are the expected ones!`);
+  } else {
+    logger.error(`${operation} for ${initialId} did not match the expected ones
+    Expected: "${expected}"
+    Actual:   "${results}"
+    `);
   }
 }
 
@@ -139,39 +151,106 @@ export async function search(id: string): Promise<Component> {
   return repository.getComponent(id);
 }
 
-export async function findCausalChain(initialId: string, tx?: Transaction): Promise<Result> {
-  const result = await (tx || repository).run(
+export async function findCausalChain(initialId: string, tx?: Transaction): Promise<Node[]> {
+  const result = await repository.run(
     `
-      MATCH (caller:Component {id: $initialId})-[* {callee_is: "Abnormal"}]->(resultNode :Component:Abnormal)
-      RETURN DISTINCT resultNode
+      MATCH (caller:Component:Abnormal {id: $initialId})
+      OPTIONAL MATCH (caller)-[* {callee_is: "Abnormal"}]->(resultNode :Component:Abnormal)
+      WHERE resultNode <> caller
+      RETURN DISTINCT caller, resultNode
     `,
-    { initialId }
+    { initialId },
+    tx
   );
 
-  return result;
+  if (result.records.length === 0) {
+    // Caller is not abnormal, so there is no causal chain whatsoever
+    return [];
+  }
+
+  const caller = result.records[0].get("caller").properties;
+  const tail = result.records.map((r: Record) => r.get("resultNode")?.properties).filter((n: Node | null) => n);
+
+  return [caller, ...tail];
 }
 
-export async function findRootCauses(initialId: string): Promise<Result> {
+export async function findRootCauses(initialId: string): Promise<Node[]> {
   const tx = repository.transaction();
   const chain = await findCausalChain(initialId, tx);
-  const abnormalSubgraph = await toEntity(chain, tx);
+  const abnormalSubgraph = await toEntity(initialId, chain, tx);
   return findEnds(initialId, abnormalSubgraph);
 }
 
-async function toEntity(queryResult: Result, tx?: Transaction): Promise<any> {
-  // TODO map from a neo4j results representation to an in-memory JS object that is easy to traverse
-  // This will require querying the DB again to fetch outgoing relations, since we only have the nodes
-  const ids: string[] = queryResult.records.map((record: Record) => record.get("resultNode").properties.id);
+async function toEntity(initialId: string, nodes: Node[], tx?: Transaction): Promise<any> {
+  // TODO add and shape metrics
+  const ids: string[] = nodes.map((n: Node) => n.id);
+  const result = await repository.run(
+    `
+      MATCH p = (caller :Component)-[]->(callee :Component)
+      WHERE caller.id IN $ids AND callee.id IN $ids
+      RETURN DISTINCT caller.id, callee.id
+    `,
+    { ids: [initialId, ...ids] },
+    tx
+  );
+  const relationships = result.records.map((r: Record) => [r.get("caller.id"), r.get("callee.id")]);
+  const nodesById = keyBy(nodes, "id");
 
-  throw new NotImplementedError();
+  for (const [callerId, calleeId] of relationships) {
+    if (nodesById[callerId].depsArray) {
+      nodesById[callerId].depsArray.push(calleeId);
+    } else {
+      nodesById[callerId].depsArray = [calleeId];
+    }
+  }
+  for (const id of ids) {
+    nodesById[id].dependencies = new Set(nodesById[id].depsArray);
+  }
+
+  return nodesById;
 }
 
-function findEnds(initialId: string, subgraph: any): Result {
-  // TODO Given an in-memory traversable graph, find the root causes (ends) beginning from a given initial id.
-  // This is a synchronous method that just inspects/traverses the in-memory graph.
-  // The return type may not be adequate, this is just a temporary definition
-  throw new NotImplementedError();
-  // return [];
+function findEnds(initialId: string, subgraph: Dictionary<Node>): Node[] {
+  const component = subgraph[initialId];
+  if (!component) {
+    // Either the component is in Normal status (therefore, not in the abnormal subgraph)
+    // or it's not present at all. In the latter, it would be nice to throw an error, but
+    // we don't have enough info here yet (only abnormal nodes are present here).
+    logger.warn(
+      `${initialId} was not found when looking for root causes in graph ${JSON.stringify(subgraph, null, 4)}`
+    );
+    return [];
+  }
+
+  const ends = internalDFS(subgraph, initialId);
+  return uniqBy(ends, "id");
+}
+
+function internalDFS(
+  subgraph: Dictionary<Node>,
+  id: string,
+  visited: Set<string> = new Set(),
+  path: Node[] = []
+): Node[] {
+  const component = subgraph[id];
+
+  if (visited.has(id)) {
+    // Cycle detected
+    // Since the path array has the ordered list of components visited to reach the current component,
+    // take the components visited since the first time that we visited the current one. That's the cycle
+    // that has formed and was detected.
+    const cycle = takeRightWhile(path, (c: Node): boolean => c.id !== id);
+    cycle.push(component);
+    return cycle;
+  }
+  visited.add(id);
+
+  if (!component.depsArray || component.depsArray.length === 0) {
+    return [component];
+  }
+
+  path.push(component);
+  return flatMap(component.depsArray, (depId: string) => internalDFS(subgraph, depId, visited, path));
 }
 
 export async function getFullGraph(): Promise<Result> {

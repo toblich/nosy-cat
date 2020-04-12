@@ -7,12 +7,12 @@ import { Request } from "express";
 
 enum STATUS {
   Normal = "Normal",
-  Abnormal = "Abnormal"
+  Abnormal = "Abnormal",
 }
 
 const ANTISTATUS = {
   [STATUS.Normal]: STATUS.Abnormal,
-  [STATUS.Abnormal]: STATUS.Normal
+  [STATUS.Abnormal]: STATUS.Normal,
 };
 
 export type Result = neo4j.QueryResult;
@@ -93,12 +93,14 @@ export default class Repository {
     metrics: ComponentCallMetrics,
     tx?: Transaction
   ): Promise<Result> {
-    logger.debug(`Adding call with args (${caller}, ${callee}, ${JSON.stringify(metrics)}, ${tx ? tx.debugId : "no-tx"})`);
+    logger.debug(
+      `Adding call with args (${caller}, ${callee}, ${JSON.stringify(metrics)}, ${tx ? tx.debugId : "no-tx"})`
+    );
     const emptyMetrics: ComponentCallMetrics = {
       // TODO update metrics
       duration: 0,
       errored: false,
-      timestamp: 0
+      timestamp: 0,
     };
     if (!caller) {
       return this.run(
@@ -152,9 +154,7 @@ export default class Repository {
   public async getComponent(id: string, tx?: Transaction): Promise<Component> {
     const result = await this.run(
       "MATCH (component:Component {id: $id})-[]->(v:Component) RETURN component, v",
-      {
-        id
-      },
+      { id },
       tx
     );
     // console.log(JSON.stringify(result, null, 4));
