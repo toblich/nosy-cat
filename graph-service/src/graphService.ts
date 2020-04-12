@@ -16,7 +16,7 @@ import {
 import Repository, { Result, Record, Transaction } from "./repository";
 import { Component } from "./Graph";
 
-const defaultTestMetrics = {
+export const defaultTestMetrics = {
   duration: 1,
   errored: true,
   timestamp: Date.now()
