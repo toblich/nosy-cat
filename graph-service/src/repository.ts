@@ -59,8 +59,7 @@ export default class Repository {
     return tx;
   }
 
-  // TODO make private and move external usages to calls to methods in this class
-  public async run(query: string, parameters?: any, tx?: Transaction, config?: any): Promise<Result> {
+  private async run(query: string, parameters?: any, tx?: Transaction, config?: any): Promise<Result> {
     if (tx) {
       return tx.run(query, parameters);
     }
@@ -172,7 +171,7 @@ export default class Repository {
       throw Error("InvalidStatus");
     }
     logger.debug(`Setting status ${id} ${status} (${tx ? `tx:${tx.debugId}` : "no-tx"})`);
-    return (tx || this).run(
+    return this.run(
       `
         MATCH (x :Component {id: $id})
         SET x:${status}, x.status = $status
@@ -181,7 +180,8 @@ export default class Repository {
         MATCH ()-[r:CALLS]->(x)
         SET r.callee_is = $status
       `,
-      { id, status }
+      { id, status },
+      tx
     );
   }
 
@@ -194,6 +194,42 @@ export default class Repository {
   public async hasDependency(from: string, to: string, tx?: Transaction): Promise<boolean> {
     // const result = await this.run('MATCH (from: $from)-[:CALLS]->(to: $to)')
     return false;
+  }
+
+  public async getAbnormalChain(initialId: string, tx?: Transaction): Promise<Result> {
+    return this.run(
+      `
+        MATCH (caller:Component:Abnormal {id: $initialId})
+        OPTIONAL MATCH (caller)-[* {callee_is: "Abnormal"}]->(resultNode :Component:Abnormal)
+        WHERE resultNode <> caller
+        RETURN DISTINCT caller, resultNode
+      `,
+      { initialId },
+      tx
+    );
+  }
+
+  public async getDependenciesBetween(
+    ids: string[],
+    tx?: Transaction
+  ): Promise<Array<{ callerId: string; calleeId: string }>> {
+    const result = await this.run(
+      `
+      MATCH p = (caller :Component)-[]->(callee :Component)
+      WHERE caller.id IN $ids AND callee.id IN $ids
+      RETURN DISTINCT caller.id, callee.id
+    `,
+      { ids },
+      tx
+    );
+    return result.records.map((r: Record) => ({
+      callerId: r.get("caller.id"),
+      calleeId: r.get("callee.id"),
+    }));
+  }
+
+  public async getFullGraph(tx?: Transaction): Promise<Result> {
+    return this.run(`MATCH (resultNode :Component) RETURN DISTINCT resultNode`, {}, tx);
   }
 
   public async clear(): Promise<void> {

@@ -152,22 +152,14 @@ export async function search(id: string): Promise<Component> {
 }
 
 export async function findCausalChain(initialId: string, tx?: Transaction): Promise<Node[]> {
-  const result = await repository.run(
-    `
-      MATCH (caller:Component:Abnormal {id: $initialId})
-      OPTIONAL MATCH (caller)-[* {callee_is: "Abnormal"}]->(resultNode :Component:Abnormal)
-      WHERE resultNode <> caller
-      RETURN DISTINCT caller, resultNode
-    `,
-    { initialId },
-    tx
-  );
+  const result = await repository.getAbnormalChain(initialId, tx);
 
   if (result.records.length === 0) {
     // Caller is not abnormal, so there is no causal chain whatsoever
     return [];
   }
 
+  // TODO consider moving logic into repository
   const caller = result.records[0].get("caller").properties;
   const tail = result.records.map((r: Record) => r.get("resultNode")?.properties).filter((n: Node | null) => n);
 
@@ -192,20 +184,11 @@ export async function findRootCauses(initialId: string): Promise<Node[]> {
 
 async function toEntity(initialId: string, nodes: Node[], tx?: Transaction): Promise<Dictionary<Node>> {
   // TODO add and shape metrics
-  const ids: string[] = nodes.map((n: Node) => n.id);
-  const result = await repository.run(
-    `
-      MATCH p = (caller :Component)-[]->(callee :Component)
-      WHERE caller.id IN $ids AND callee.id IN $ids
-      RETURN DISTINCT caller.id, callee.id
-    `,
-    { ids: [initialId, ...ids] },
-    tx
-  );
-  const relationships = result.records.map((r: Record) => [r.get("caller.id"), r.get("callee.id")]);
+  const ids = [initialId, ...nodes.map((n: Node) => n.id)];
+  const relationships = await repository.getDependenciesBetween(ids, tx);
   const nodesById = keyBy(nodes, "id");
 
-  for (const [callerId, calleeId] of relationships) {
+  for (const { callerId, calleeId } of relationships) {
     if (nodesById[callerId].depsArray) {
       nodesById[callerId].depsArray.push(calleeId);
     } else {
@@ -263,7 +246,7 @@ function internalDFS(
 }
 
 export async function getFullGraph(): Promise<Result> {
-  return repository.run(`MATCH (n:Component) RETURN n`);
+  return repository.getFullGraph();
 }
 
 class NotImplementedError extends Error {
