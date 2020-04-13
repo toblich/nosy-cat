@@ -66,6 +66,8 @@ repository.clear().then(async () => {
       .map(([caller, callee]: string[]) => ({ caller, callee, metrics: defaultTestMetrics }))
   );
 
+  logger.level = "info";
+
   await add([
     ...componentCalls,
     { callee: "_", metrics: defaultTestMetrics },
@@ -93,6 +95,7 @@ repository.clear().then(async () => {
     ["Y", "Causal chain", "XYZ"],
     ["Z", "Causal chain", "Z"],
     ["Z", "Root causes", "Z"],
+    ["N", "Root causes", "O"],
     ["A", "Root causes", ""], // TODO complete expected values
     ["B", "Root causes", ""], // TODO complete expected values
     // TODO add more cases
@@ -102,6 +105,7 @@ repository.clear().then(async () => {
       await testHelper(initialId, operation, expected);
     } catch (error) {
       logger.error(`${operation} for ${initialId} errored with ${error.stack}`);
+      break;
     }
   }
 });
@@ -122,9 +126,9 @@ async function testHelper(initialId: string, operation: string, expectedUnsorted
   if (results === expected) {
     logger.info(`${operation} for ${initialId} are the expected ones!`);
   } else {
-    logger.error(`${operation} for ${initialId} did not match the expected ones
-    Expected: "${expected}"
-    Actual:   "${results}"
+    logger.error(`${operation} for ${initialId} did not match
+      Expected: "${expected}"
+      Actual:   "${results}"
     `);
   }
 }
@@ -249,6 +253,7 @@ export async function getFullGraph(): Promise<Result> {
   return repository.getFullGraph();
 }
 
+// TODO delete when no longer used
 class NotImplementedError extends Error {
   constructor() {
     super("Not Implemented :(");

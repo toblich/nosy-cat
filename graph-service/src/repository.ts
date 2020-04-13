@@ -31,7 +31,7 @@ export default class Repository {
       await this.run("CREATE CONSTRAINT Component_id_unique on (x:Component) ASSERT x.id IS UNIQUE");
     } catch (error) {
       if ((error as neo4j.Neo4jError).code === "Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists") {
-        logger.info("'Component_id_unique' constraint already exists!");
+        logger.warn("'Component_id_unique' constraint already exists!");
       } else {
         throw error;
       }
@@ -233,7 +233,7 @@ export default class Repository {
   }
 
   public async clear(): Promise<void> {
-    logger.debug("Clearing the entire graph (delete everything!");
+    logger.warn("Clearing the entire graph (delete everything!");
     await this.run(`MATCH (x) DETACH DELETE x`);
     await this.initialize();
     return;
