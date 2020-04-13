@@ -176,12 +176,21 @@ export async function findCausalChain(initialId: string, tx?: Transaction): Prom
 
 export async function findRootCauses(initialId: string): Promise<Node[]> {
   const tx = repository.transaction();
-  const chain = await findCausalChain(initialId, tx);
-  const abnormalSubgraph = await toEntity(initialId, chain, tx);
+  let abnormalSubgraph;
+  try {
+    const chain = await findCausalChain(initialId, tx);
+    abnormalSubgraph = await toEntity(initialId, chain, tx);
+    await tx.commit();
+  } catch (e) {
+    logger.error(e);
+    await tx.rollback();
+    throw e;
+  }
+
   return findEnds(initialId, abnormalSubgraph);
 }
 
-async function toEntity(initialId: string, nodes: Node[], tx?: Transaction): Promise<any> {
+async function toEntity(initialId: string, nodes: Node[], tx?: Transaction): Promise<Dictionary<Node>> {
   // TODO add and shape metrics
   const ids: string[] = nodes.map((n: Node) => n.id);
   const result = await repository.run(

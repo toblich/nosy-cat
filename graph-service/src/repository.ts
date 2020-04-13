@@ -31,7 +31,7 @@ export default class Repository {
       await this.run("CREATE CONSTRAINT Component_id_unique on (x:Component) ASSERT x.id IS UNIQUE");
     } catch (error) {
       if ((error as neo4j.Neo4jError).code === "Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists") {
-        logger.info("Constraint already exists!");
+        logger.info("'Component_id_unique' constraint already exists!");
       } else {
         throw error;
       }
@@ -93,9 +93,7 @@ export default class Repository {
     metrics: ComponentCallMetrics,
     tx?: Transaction
   ): Promise<Result> {
-    logger.debug(
-      `Adding call with args (${caller}, ${callee}, ${JSON.stringify(metrics)}, ${tx ? tx.debugId : "no-tx"})`
-    );
+    logger.debug(`Adding call ${caller}->${callee} ${JSON.stringify(metrics)} ${tx ? tx.debugId : "no-tx"}`);
     const emptyMetrics: ComponentCallMetrics = {
       // TODO update metrics
       duration: 0,
@@ -173,7 +171,7 @@ export default class Repository {
       logger.warn(`Trying to set invalid status (id: ${id}, status: ${status}, tx: ${tx ? tx.debugId : "no-tx"})`);
       throw Error("InvalidStatus");
     }
-    logger.info(`Setting status ${id} ${status} (${tx ? `tx:${tx.debugId}` : "no-tx"})`);
+    logger.debug(`Setting status ${id} ${status} (${tx ? `tx:${tx.debugId}` : "no-tx"})`);
     return (tx || this).run(
       `
         MATCH (x :Component {id: $id})
