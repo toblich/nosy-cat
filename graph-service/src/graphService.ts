@@ -94,8 +94,10 @@ repository.clear().then(async () => {
     ["X", "Causal chain", "XYZ"],
     ["Y", "Causal chain", "XYZ"],
     ["Z", "Causal chain", "Z"],
-    ["Z", "Root causes", "Z"],
     ["N", "Root causes", "O"],
+    ["Z", "Root causes", "Z"],
+    ["X", "Root causes", "Z"],
+    ["Y", "Root causes", "Z"],
     ["A", "Root causes", ""], // TODO complete expected values
     ["B", "Root causes", ""], // TODO complete expected values
     // TODO add more cases
@@ -130,6 +132,7 @@ async function testHelper(initialId: string, operation: string, expectedUnsorted
       Expected: "${expected}"
       Actual:   "${results}"
     `);
+    throw new Error("FailedTest");
   }
 }
 
@@ -176,6 +179,7 @@ export async function findRootCauses(initialId: string): Promise<Node[]> {
   try {
     const chain = await findCausalChain(initialId, tx);
     abnormalSubgraph = await toEntity(initialId, chain, tx);
+    logger.data(`Abnormal subgraph from ${initialId}: ${JSON.stringify(abnormalSubgraph, null, 4)}`);
     await tx.commit();
   } catch (e) {
     logger.error(e);
