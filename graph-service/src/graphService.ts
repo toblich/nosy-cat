@@ -1,6 +1,6 @@
 import * as httpErrors from "http-errors";
 
-import { keyBy, flatMap, takeRightWhile, uniqBy } from "lodash";
+import { keyBy, flatMap, takeRightWhile, uniqBy, dropRight } from "lodash";
 
 import {
   Component as HelperComponent,
@@ -17,6 +17,7 @@ import {
 
 import Repository, { Result, Record, Transaction } from "./repository";
 import { Component } from "./Graph";
+// import { Node } from "neo4j-driver";
 
 export const defaultTestMetrics = {
   duration: 1,
@@ -26,8 +27,9 @@ export const defaultTestMetrics = {
 
 interface Node {
   id: string;
-  dependencies?: Set<string>;
-  depsArray: string[];
+  // dependencies?: Set<string>;
+  dependencies: string[];
+  depsSet: Set<string>;
   // TODO include and shape metrics here
 }
 
@@ -179,7 +181,7 @@ export async function findRootCauses(initialId: string): Promise<Node[]> {
   try {
     const chain = await findCausalChain(initialId, tx);
     abnormalSubgraph = await toEntity(initialId, chain, tx);
-    logger.data(`Abnormal subgraph from ${initialId}: ${JSON.stringify(abnormalSubgraph, null, 4)}`);
+    // logger.data(`Abnormal subgraph from ${initialId}: ${JSON.stringify(abnormalSubgraph, null, 4)}`);
     await tx.commit();
   } catch (e) {
     logger.error(e);
@@ -197,14 +199,17 @@ async function toEntity(initialId: string, nodes: Node[], tx?: Transaction): Pro
   const nodesById = keyBy(nodes, "id");
 
   for (const { callerId, calleeId } of relationships) {
-    if (nodesById[callerId].depsArray) {
-      nodesById[callerId].depsArray.push(calleeId);
+    if (nodesById[callerId].dependencies) {
+      nodesById[callerId].dependencies.push(calleeId);
     } else {
-      nodesById[callerId].depsArray = [calleeId];
+      nodesById[callerId].dependencies = [calleeId];
     }
   }
   for (const id of ids) {
-    nodesById[id].dependencies = new Set(nodesById[id].depsArray);
+    if (!nodesById[id].dependencies) {
+      nodesById[id].dependencies = [];
+    }
+    nodesById[id].depsSet = new Set(nodesById[id].dependencies);
   }
 
   return nodesById;
@@ -223,34 +228,117 @@ function findEnds(initialId: string, subgraph: Dictionary<Node>): Node[] {
   }
 
   const ends = internalDFS(subgraph, initialId);
-  return uniqBy(ends, "id");
+
+  // Dedupe and split super-nodes into their parts
+  // TODO: Dependencies of nodes may still link to supernode instead of the original parts
+  return uniqBy(
+    flatMap(ends, (node: Supernode) => (isRegularNodeId(node.id) ? node : node.nodes)),
+    "id"
+  );
 }
 
 function internalDFS(
   subgraph: Dictionary<Node>,
   id: string,
   visited: Set<string> = new Set(),
-  path: Node[] = []
+  path: Node[] = [],
+  parentId: string = null
 ): Node[] {
-  const component = subgraph[id];
+  let component: Node = subgraph[id];
+  // logger.error(`Starting DFS from id ${id}. Path: ${path.map((n: Node) => n.id)}. Parent: ${parentId}. Visited: ${Array.from(visited)}`);
+
+  if (!component || (parentId && !subgraph[parentId])) {
+    // Case for when accessing a node that has been merged into a supernode
+    // logger.error("CASE OF SUPERNODE!");
+    return [];
+  }
 
   if (visited.has(id)) {
-    // Cycle detected
+    // * Cycle detected!
+    // logger.warn(`Cycle detected for id ${id}`);
+    // logger.warn(`Visited: ${Array.from(visited)}`);
+    // logger.warn(`Path: ${path.map((n: Node) => n.id)}`);
     // Since the path array has the ordered list of components visited to reach the current component,
     // take the components visited since the first time that we visited the current one. That's the cycle
     // that has formed and was detected.
-    const cycle = takeRightWhile(path, (c: Node): boolean => c.id !== id);
+    const cycle = takeRightWhile(path, (c: Node): boolean => c.id !== component.id);
     cycle.push(component);
-    return cycle;
-  }
-  visited.add(id);
+    const cycleIds = cycle.map((n: Node) => n.id);
+    const cycleIdsSet = new Set(cycleIds);
 
-  if (!component.depsArray || component.depsArray.length === 0) {
+    // Create supernode
+    const supernodeId = toSupernodeId(cycleIds);
+    const supernodeDepsSet = new Set(
+      flatMap(cycle, (n: Node) => n.dependencies.filter((d: string) => !cycleIdsSet.has(d)))
+    );
+    const supernode: Supernode = {
+      id: supernodeId,
+      dependencies: Array.from(supernodeDepsSet),
+      depsSet: supernodeDepsSet,
+      nodes: cycle,
+    };
+
+    // Remove existing nodes of the cycle merged into supernode from the graph an the visited set
+    // Also mark dependencies as not visited
+    for (const cycleId of cycleIds) {
+      // logger.info(`removing ${cycleId} from visited`);
+      visited.delete(cycleId);
+      for (const depId of subgraph[cycleId].dependencies) {
+        // logger.info(`removing ${depId} from visited`);
+        visited.delete(depId);
+      }
+      delete subgraph[cycleId];
+    }
+    // Remove all visited nodes that are path of the cycle, as they will be re-added as just the supernode
+    // logger.data(`path        : ${JSON.stringify(path.map((n: Node) => n.id))}`);
+    path.splice(path.length - cycle.length); // TODO check if there is an off-by-one bug here
+    // logger.data(`path spliced: ${JSON.stringify(path.map((n: Node) => n.id))}`);
+
+    // For nodes that depended on something in the cycle, change that dep to be on the supernode
+    for (const node of Object.values(subgraph)) {
+      // logger.data(`Evaluating deps of ${node.id}`);
+      node.depsSet = new Set(node.dependencies.map((dep: string) => (cycleIdsSet.has(dep) ? supernodeId : dep)));
+      node.dependencies = Array.from(node.depsSet);
+      // logger.data(`new depSet: ${JSON.stringify(node.dependencies)}`);
+    }
+
+    // Add supernode to graph
+    subgraph[supernodeId] = supernode;
+
+    // Set supernode as current component being visited
+    component = supernode;
+  }
+
+  visited.add(component.id);
+
+  if (!component.dependencies || component.dependencies.length === 0) {
     return [component];
   }
 
   path.push(component);
-  return flatMap(component.depsArray, (depId: string) => internalDFS(subgraph, depId, visited, path));
+  return flatMap(component.dependencies, (depId: string) => internalDFS(subgraph, depId, visited, path, component.id));
+}
+
+const SUPERNODE_PREFIX = "__supernode_cycle";
+const SUPERNODE_SEPARATOR = "...";
+
+function isSupernodeId(id: string): boolean {
+  // begins with prefix - separator - nodeId - separator - (non-empty tail)
+  // The tail should follow the id-separator-id pattern but is not checked)
+  const regex = new RegExp([`^${SUPERNODE_PREFIX}`, ".*", "."].join(SUPERNODE_SEPARATOR));
+  return regex.test(id);
+}
+
+function isRegularNodeId(id: string): boolean {
+  return !isSupernodeId(id);
+}
+
+function toSupernodeId(ids: string[]): string {
+  return [SUPERNODE_PREFIX, ...ids].join(SUPERNODE_SEPARATOR);
+}
+
+interface Supernode extends Node {
+  nodes: Node[];
 }
 
 export async function getFullGraph(): Promise<Result> {
