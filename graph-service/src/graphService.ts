@@ -100,8 +100,19 @@ repository.clear().then(async () => {
     ["Z", "Root causes", "Z"],
     ["X", "Root causes", "Z"],
     ["Y", "Root causes", "Z"],
-    ["A", "Root causes", ""], // TODO complete expected values
-    ["B", "Root causes", ""], // TODO complete expected values
+    ["A", "Root causes", "GHIJKO"],
+    ["B", "Root causes", "GHIJKO"],
+    ["M", "Root causes", "GHIJKO"],
+    ["O", "Root causes", "O"],
+    ["K", "Root causes", "K"],
+    ["G", "Root causes", "GHIJ"],
+    ["H", "Root causes", "GHIJ"],
+    ["I", "Root causes", "GHIJ"],
+    ["J", "Root causes", "GHIJ"],
+    ["_", "Root causes", "_"],
+    ["$", "Root causes", ""], // Node is healthy
+    ["E", "Root causes", ""], // Node is healthy
+    ["F", "Root causes", "F"],
     // TODO add more cases
   ];
   for (const [initialId, operation, expected] of cases) {
@@ -180,6 +191,11 @@ export async function findRootCauses(initialId: string): Promise<Node[]> {
   let abnormalSubgraph;
   try {
     const chain = await findCausalChain(initialId, tx);
+    if (chain.length === 0) {
+      await tx.commit();
+      return [];
+    }
+
     abnormalSubgraph = await toEntity(initialId, chain, tx);
     // logger.data(`Abnormal subgraph from ${initialId}: ${JSON.stringify(abnormalSubgraph, null, 4)}`);
     await tx.commit();
