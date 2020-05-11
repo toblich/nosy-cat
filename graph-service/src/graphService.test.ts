@@ -6,6 +6,25 @@ function timeout(ms: number): Promise<void> {
   return new Promise((resolve: (...props: any[]) => any): any => setTimeout(resolve, ms));
 }
 
+async function availableDb(): Promise<void> {
+  if (!process.env.NEO4J_HOST) {
+    throw new Error("NEO4J_HOST unspecified");
+  }
+  const driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"));
+  const session = driver.session();
+  let isAlive = false;
+  while (!isAlive) {
+    try {
+      await session.run("Return date() as currentDate");
+      isAlive = true;
+    } catch (e) {
+      await timeout(500);
+    }
+  }
+  await session.close();
+  await driver.close();
+}
+
 async function testHelper(initialId: string, operation: string, expectedUnsorted: string): Promise<void> {
   if (!["Root causes", "Causal chain"].includes(operation)) {
     throw new Error(`Unsupported test operation: ${operation}`);
@@ -27,15 +46,9 @@ async function testHelper(initialId: string, operation: string, expectedUnsorted
   }
 }
 
-interface Test {
-  initialId: string;
-  op: string;
-  ex: string;
-}
+// ---
 
 describe("graph service", () => {
-  let driver;
-  let session;
   const repository = new Repository();
 
   const defaultTestMetrics = Object.freeze({
@@ -45,21 +58,7 @@ describe("graph service", () => {
   });
 
   beforeAll(async () => {
-    if (!process.env.NEO4J_HOST) {
-      throw new Error("NEO4J_HOST unspecified");
-    }
-    driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"));
-    session = driver.session();
-
-    let isAlive = false;
-    while (!isAlive) {
-      try {
-        await session.run("Return date() as currentDate");
-        isAlive = true;
-      } catch (e) {
-        await timeout(500);
-      }
-    }
+    await availableDb();
 
     try {
       await repository.clear();
@@ -100,8 +99,8 @@ describe("graph service", () => {
     try {
       await graphService.add([
         ...componentCalls,
-        { callee: "_", metrics: graphService.defaultTestMetrics },
-        { callee: "$", metrics: graphService.defaultTestMetrics },
+        { callee: "_", metrics: defaultTestMetrics },
+        { callee: "$", metrics: defaultTestMetrics },
       ]);
     } catch (error) {
       throw Error(`There was an error while adding the component calls, ${error.stack}`);
@@ -158,6 +157,12 @@ describe("graph service", () => {
       ex,
     },
   ]);
+
+  interface Test {
+    initialId: string;
+    op: string;
+    ex: string;
+  }
 
   describe.each(cases)("when processing: %s", (_: string, test: Test) => {
     it("should be successful", async () => {
