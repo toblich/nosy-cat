@@ -25,7 +25,7 @@ export const defaultTestMetrics = {
   timestamp: Date.now(),
 };
 
-interface Node {
+export interface Node {
   id: string;
   // dependencies?: Set<string>;
   dependencies: string[];
@@ -38,91 +38,87 @@ const repository = new Repository();
 logger.warn("Initializing graph!");
 // TODO the following promise chain is just for local testing
 repository.clear().then(async () => {
-  // Create graph structure
-  const componentCalls = await Promise.all(
-    [
-      "AB",
-      "BB",
-      "BC",
-      "CB",
-      "BD",
-      "BE",
-      "EF",
-      "BG",
-      "GH",
-      "HI",
-      "IJ",
-      "JG",
-      "BK",
-      "KL",
-      "LM",
-      "MB",
-      "BN",
-      "NO",
-      "XY",
-      "YX",
-      "XZ",
-      "YZ",
-    ]
-      .map((s: string) => Array.from(s))
-      .map(([caller, callee]: string[]) => ({ caller, callee, metrics: defaultTestMetrics }))
-  );
-
-  logger.level = "info";
-
-  await add([
-    ...componentCalls,
-    { callee: "_", metrics: defaultTestMetrics },
-    { callee: "$", metrics: defaultTestMetrics },
-  ]);
-
-  // Set abnormal statuses
-  await Promise.all(Array.from("ABCFGHIJKMNOXYZ_").map((id: string) => repository.setStatus(id, "Abnormal")));
-
-  // Test root causes search
-  const cases = [
-    ["A", "Causal chain", "ABCGHIJKNO"],
-    ["B", "Causal chain", "BCGHIJKNO"],
-    ["C", "Causal chain", "BCGHIJKNO"],
-    ["D", "Causal chain", ""], // Node is healthy
-    ["L", "Causal chain", ""], // Node is healthy
-    ["M", "Causal chain", "MBCGHIJKNO"],
-    ["G", "Causal chain", "GHIJ"],
-    ["N", "Causal chain", "NO"],
-    ["O", "Causal chain", "O"],
-    ["K", "Causal chain", "K"],
-    ["_", "Causal chain", "_"],
-    ["$", "Causal chain", ""],
-    ["X", "Causal chain", "XYZ"],
-    ["Y", "Causal chain", "XYZ"],
-    ["Z", "Causal chain", "Z"],
-    ["N", "Root causes", "O"],
-    ["Z", "Root causes", "Z"],
-    ["X", "Root causes", "Z"],
-    ["Y", "Root causes", "Z"],
-    ["A", "Root causes", "GHIJKO"],
-    ["B", "Root causes", "GHIJKO"],
-    ["M", "Root causes", "GHIJKO"],
-    ["O", "Root causes", "O"],
-    ["K", "Root causes", "K"],
-    ["G", "Root causes", "GHIJ"],
-    ["H", "Root causes", "GHIJ"],
-    ["I", "Root causes", "GHIJ"],
-    ["J", "Root causes", "GHIJ"],
-    ["_", "Root causes", "_"],
-    ["$", "Root causes", ""], // Node is healthy
-    ["E", "Root causes", ""], // Node is healthy
-    ["F", "Root causes", "F"],
-    // TODO add more cases
-  ];
-  for (const [initialId, operation, expected] of cases) {
-    try {
-      await testHelper(initialId, operation, expected);
-    } catch (error) {
-      logger.error(`${operation} for ${initialId} errored with ${error.stack}`);
-      break;
-    }
-  }
+  // // Create graph structure
+  // const componentCalls = await Promise.all(
+  //   [
+  //     "AB",
+  //     "BB",
+  //     "BC",
+  //     "CB",
+  //     "BD",
+  //     "BE",
+  //     "EF",
+  //     "BG",
+  //     "GH",
+  //     "HI",
+  //     "IJ",
+  //     "JG",
+  //     "BK",
+  //     "KL",
+  //     "LM",
+  //     "MB",
+  //     "BN",
+  //     "NO",
+  //     "XY",
+  //     "YX",
+  //     "XZ",
+  //     "YZ",
+  //   ]
+  //     .map((s: string) => Array.from(s))
+  //     .map(([caller, callee]: string[]) => ({ caller, callee, metrics: defaultTestMetrics }))
+  // );
+  // logger.level = "info";
+  // await add([
+  //   ...componentCalls,
+  //   { callee: "_", metrics: defaultTestMetrics },
+  //   { callee: "$", metrics: defaultTestMetrics },
+  // ]);
+  // // Set abnormal statuses
+  // await Promise.all(Array.from("ABCFGHIJKMNOXYZ_").map((id: string) => repository.setStatus(id, "Abnormal")));
+  // // Test root causes search
+  // const cases = [
+  //   ["A", "Causal chain", "ABCGHIJKNO"],
+  //   ["B", "Causal chain", "BCGHIJKNO"],
+  //   ["C", "Causal chain", "BCGHIJKNO"],
+  //   ["D", "Causal chain", ""], // Node is healthy
+  //   ["L", "Causal chain", ""], // Node is healthy
+  //   ["M", "Causal chain", "MBCGHIJKNO"],
+  //   ["G", "Causal chain", "GHIJ"],
+  //   ["N", "Causal chain", "NO"],
+  //   ["O", "Causal chain", "O"],
+  //   ["K", "Causal chain", "K"],
+  //   ["_", "Causal chain", "_"],
+  //   ["$", "Causal chain", ""],
+  //   ["X", "Causal chain", "XYZ"],
+  //   ["Y", "Causal chain", "XYZ"],
+  //   ["Z", "Causal chain", "Z"],
+  //   ["N", "Root causes", "O"],
+  //   ["Z", "Root causes", "Z"],
+  //   ["X", "Root causes", "Z"],
+  //   ["Y", "Root causes", "Z"],
+  //   ["A", "Root causes", "GHIJKO"],
+  //   ["B", "Root causes", "GHIJKO"],
+  //   ["M", "Root causes", "GHIJKO"],
+  //   ["O", "Root causes", "O"],
+  //   ["K", "Root causes", "K"],
+  //   ["G", "Root causes", "GHIJ"],
+  //   ["H", "Root causes", "GHIJ"],
+  //   ["I", "Root causes", "GHIJ"],
+  //   ["J", "Root causes", "GHIJ"],
+  //   ["_", "Root causes", "_"],
+  //   ["$", "Root causes", ""], // Node is healthy
+  //   ["E", "Root causes", ""], // Node is healthy
+  //   ["F", "Root causes", "F"],
+  //   // TODO add more cases
+  // ];
+  // for (const [initialId, operation, expected] of cases) {
+  //   try {
+  //     await testHelper(initialId, operation, expected);
+  //   } catch (error) {
+  //     logger.error(`${operation} for ${initialId} errored with ${error.stack}`);
+  //     break;
+  //   }
+  // }
 });
 
 async function testHelper(initialId: string, operation: string, expectedUnsorted: string): Promise<void> {

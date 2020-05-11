@@ -10,28 +10,20 @@ async function testHelper(initialId: string, operation: string, expectedUnsorted
   if (!["Root causes", "Causal chain"].includes(operation)) {
     throw new Error(`Unsupported test operation: ${operation}`);
   }
-  const method = operation === "Root causes" ? graphService.findRootCauses : graphService.findCausalChain;
-  const expected = Array.from(expectedUnsorted)
-    .sort()
-    .join("");
+  const expected = Array.from(expectedUnsorted).sort().join("");
 
-  // tslint:disable-next-line: typedef
-  try {
-    const results = (await method(initialId)).records
-      .map((record: Record) => record.get("resultNode").properties.id)
-      .sort()
-      .join("");
+  const idsArray: string[] =
+    operation === "Root causes"
+      ? (await graphService.findRootCauses(initialId)).map((r: graphService.Node) => r.id)
+      : (await graphService.findCausalChain(initialId)).map((r: graphService.Node) => r.id);
 
-    if (results !== expected) {
-      // tslint:disable-next-line:no-console
-      throw Error(`${operation} for ${initialId} did not match the expected ones
-        Expected: "${expected}"
-        Actual:   "${results}"
-        `);
-    }
-  } catch (error) {
-    // tslint:disable-next-line:no-console
-    throw Error(`${operation} for ${initialId} errored with ${error.stack}`);
+  const results = idsArray.sort().join("");
+
+  if (results !== expected) {
+    throw new Error(`${operation} for ${initialId} did not match
+      Expected: "${expected}"
+      Actual:   "${results}"
+    `);
   }
 }
 
@@ -46,7 +38,16 @@ describe("graph service", () => {
   let session;
   const repository = new Repository();
 
+  const defaultTestMetrics = Object.freeze({
+    duration: 1,
+    errored: true,
+    timestamp: Date.now(),
+  });
+
   beforeAll(async () => {
+    if (!process.env.NEO4J_HOST) {
+      throw new Error("NEO4J_HOST unspecified");
+    }
     driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"));
     session = driver.session();
 
@@ -67,38 +68,40 @@ describe("graph service", () => {
     }
 
     // Create graph structure
-    const componentCalls = [
-      "AB",
-      "BB",
-      "BC",
-      "CB",
-      "BD",
-      "BE",
-      "EF",
-      "BG",
-      "GH",
-      "HI",
-      "IJ",
-      "JG",
-      "BK",
-      "KL",
-      "LM",
-      "MB",
-      "BN",
-      "NO",
-      "XY",
-      "YX",
-      "XZ",
-      "YZ"
-    ]
-      .map((s: string) => Array.from(s))
-      .map(([caller, callee]: string[]) => ({ caller, callee, metrics: graphService.defaultTestMetrics }));
+    const componentCalls = await Promise.all(
+      [
+        "AB",
+        "BB",
+        "BC",
+        "CB",
+        "BD",
+        "BE",
+        "EF",
+        "BG",
+        "GH",
+        "HI",
+        "IJ",
+        "JG",
+        "BK",
+        "KL",
+        "LM",
+        "MB",
+        "BN",
+        "NO",
+        "XY",
+        "YX",
+        "XZ",
+        "YZ",
+      ]
+        .map((s: string) => Array.from(s))
+        .map(([caller, callee]: string[]) => ({ caller, callee, metrics: defaultTestMetrics }))
+    );
 
     try {
       await graphService.add([
         ...componentCalls,
         { callee: "_", metrics: graphService.defaultTestMetrics },
-        { callee: "$", metrics: graphService.defaultTestMetrics }
+        { callee: "$", metrics: graphService.defaultTestMetrics },
       ]);
     } catch (error) {
       throw Error(`There was an error while adding the component calls, ${error.stack}`);
@@ -115,27 +118,45 @@ describe("graph service", () => {
   // Test root causes search
 
   const cases: Array<[string, Test]> = [
-    ["A", "Causal chain", "BCGHIJKNO"],
+    ["A", "Causal chain", "ABCGHIJKNO"],
     ["B", "Causal chain", "BCGHIJKNO"],
     ["C", "Causal chain", "BCGHIJKNO"],
-    ["M", "Causal chain", "BCGHIJKNO"],
+    ["D", "Causal chain", ""], // Node is healthy
+    ["L", "Causal chain", ""], // Node is healthy
+    ["M", "Causal chain", "MBCGHIJKNO"],
     ["G", "Causal chain", "GHIJ"],
-    ["N", "Causal chain", "O"],
-    ["O", "Causal chain", ""],
-    ["K", "Causal chain", ""],
-    ["_", "Causal chain", ""],
+    ["N", "Causal chain", "NO"],
+    ["O", "Causal chain", "O"],
+    ["K", "Causal chain", "K"],
+    ["_", "Causal chain", "_"],
     ["$", "Causal chain", ""],
     ["X", "Causal chain", "XYZ"],
     ["Y", "Causal chain", "XYZ"],
-    ["Z", "Causal chain", ""],
-    ["Z", "Root causes", ""]
+    ["Z", "Causal chain", "Z"],
+    ["N", "Root causes", "O"],
+    ["Z", "Root causes", "Z"],
+    ["X", "Root causes", "Z"],
+    ["Y", "Root causes", "Z"],
+    ["A", "Root causes", "GHIJKO"],
+    ["B", "Root causes", "GHIJKO"],
+    ["M", "Root causes", "GHIJKO"],
+    ["O", "Root causes", "O"],
+    ["K", "Root causes", "K"],
+    ["G", "Root causes", "GHIJ"],
+    ["H", "Root causes", "GHIJ"],
+    ["I", "Root causes", "GHIJ"],
+    ["J", "Root causes", "GHIJ"],
+    ["_", "Root causes", "_"],
+    ["$", "Root causes", ""], // Node is healthy
+    ["E", "Root causes", ""], // Node is healthy
+    ["F", "Root causes", "F"],
   ].map(([initialId, op, ex]: [string, string, string]) => [
     `${op} for ${initialId} to ${ex}`,
     {
       initialId,
       op,
-      ex
-    }
+      ex,
+    },
   ]);
 
   describe.each(cases)("when processing: %s", (_: string, test: Test) => {

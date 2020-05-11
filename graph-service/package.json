@@ -9,9 +9,8 @@
     "build-helpers": "cd ../helpers && npm run build && cd -",
     "start:dockerized": "npm run build-helpers && npm run start",
     "start:prod": "node ./build/app.js",
-    "test": "npm run build-helpers && npm run build && npm run test:unit && npm run test:dockerized",
-    "test:unit": "jest --forceExit --detectOpenHandles --coverage --verbose",
-    "test:dockerized": "jest --config jest-docker.config.js build/graphService.spec.js --forceExit --detectOpenHandles --coverage --verbose"
+    "test": "npm run build-helpers && npm run build && npm run test:unit",
+    "test:unit": "jest --forceExit --detectOpenHandles --coverage --verbose"
   },
   "author": "",
   "license": "BSD-3-Clause",

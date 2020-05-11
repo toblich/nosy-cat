@@ -15,6 +15,7 @@
 
 !graph-service/src
 !graph-service/*.json
+!graph-service/jest.config.js
 
 !pagerduty-integration/src
 !pagerduty-integration/*.json
