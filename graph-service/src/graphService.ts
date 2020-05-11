@@ -149,17 +149,11 @@ export async function clear(): Promise<void> {
 }
 
 export async function add(calls: ComponentCall[]): Promise<void> {
-  const tx = repository.transaction();
-  try {
+  return transact(async (tx: Transaction) => {
     for (const { caller, callee, metrics } of calls) {
       await repository.addCall(caller, callee, metrics, tx);
     }
-    return tx.commit();
-  } catch (e) {
-    logger.error(e);
-    await tx.rollback();
-    throw e;
-  }
+  });
 }
 
 export async function search(id: string): Promise<Component> {
@@ -182,27 +176,30 @@ export async function findCausalChain(initialId: string, tx?: Transaction): Prom
 }
 
 export async function findRootCauses(initialId: string): Promise<Node[]> {
-  const tx = repository.transaction();
-
-  let abnormalSubgraph;
-  try {
+  const abnormalSubgraph: Dictionary<Node> = await transact(async (tx: Transaction) => {
     const chain = await findCausalChain(initialId, tx);
-
-    if (chain.length === 0) {
-      await tx.commit();
-      return [];
-    }
-
-    abnormalSubgraph = await toEntity(initialId, chain, tx);
-
-    await tx.commit();
-  } catch (e) {
-    logger.error(e);
-    await tx.rollback();
-    throw e;
-  }
+    return chain.length === 0 ? {} : toEntity(initialId, chain, tx);
+  });
 
   return findEnds(initialId, abnormalSubgraph);
+}
+
+async function transact<T>(fn: (tx: Transaction) => Promise<T>): Promise<T> {
+  const tx = repository.transaction();
+
+  try {
+    const result = await fn(tx);
+    if (tx.isOpen()) {
+      tx.commit();
+    }
+    return result;
+  } catch (e) {
+    logger.error(e);
+    if (tx.isOpen()) {
+      await tx.rollback();
+    }
+    throw e;
+  }
 }
 
 async function toEntity(initialId: string, nodes: Node[], tx?: Transaction): Promise<Dictionary<Node>> {
