@@ -63,6 +63,26 @@ services:
     networks:
       - default
 
+  metrics-processor:
+    build:
+      <<: *base-build
+      args:
+        - SERVICE=metrics-processor
+    volumes:
+      - "./nodemon.json:/project/nodemon.json"
+      - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+      - "./helpers/declarations:/project/helpers/declarations"
+      - "./helpers/src:/project/helpers/src"
+      - "./metrics-processor/tsconfig.json:/project/app/tsconfig.json"
+      - "./metrics-processor/src:/project/app/src"
+    command: *base-kafka-command
+    depends_on:
+      - kafka
+      - redis
+    environment: *base-environment
+    networks:
+      - default
+
   anomaly-detector:
     build:
       <<: *base-build

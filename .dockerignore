@@ -13,6 +13,9 @@
 !anomaly-detector/src
 !anomaly-detector/*.json
 
+!metrics-processor/src
+!metrics-processor/*.json
+
 !graph-service/src
 !graph-service/*.json
 !graph-service/jest.config.js
