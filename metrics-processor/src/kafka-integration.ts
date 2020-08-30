@@ -14,7 +14,7 @@ export async function consume(
   logger.debug("entered consume");
 
   try {
-    const kafka = await kafkaWrapper(tracer, "dependency-detector");
+    const kafka = await kafkaWrapper(tracer, "metrics-processor");
 
     const consumer = kafka.consumer;
     const producer = kafka.producer;
