@@ -54,24 +54,33 @@ export async function processRequest({ component, errored, timestamp, duration }
   await updateBuffer(key, duration, errored);
 
   const pattern = join(component, "*");
-  const componentBufferKeys: number[] = (await (bufferRedisClient as any).keysAsync(pattern)).map(deserializeTs);
+  logger.debug(`Checking buffers with pattern "${pattern}"`);
+  const componentBufferKeys: number[] = (await (bufferRedisClient as any).keysAsync(pattern))
+    .map(prefixRemover(component))
+    .map(deserializeTs);
+  logger.debug(`Existing buffers: ${JSON.stringify(componentBufferKeys)}`);
+
   const previousBuffersKeys = componentBufferKeys
     .filter((ts: number) => ts < minuteTs) // filter previous keys
     .sort((a: number, b: number) => a - b); // and sort temporally ascending
 
+  logger.debug(`Checking previous buffers ${JSON.stringify(previousBuffersKeys)}`);
   for (const ts of previousBuffersKeys) {
     // cannot be done concurrently as order must be guaranteed
-    await updateEWMAs(component, serializeTs(ts));
+    await updateEWMAs(component, buildBufferKey(component, ts));
   }
+}
+
+function prefixRemover(prefix: string): (key: string) => string {
+  const regex = new RegExp(`^${prefix}:`);
+  return (key: string): string => key.replace(regex, "");
 }
 
 async function updateBuffer(key: string, duration: number, errored: boolean): Promise<void> {
   const multi = bufferRedisClient.multi();
   multi.hincrby(key, bufferFields.THROUGHPUT, 1);
   multi.hincrby(key, bufferFields.TOTAL_MS, duration);
-  if (errored) {
-    multi.hincrby(key, "errors", 1);
-  }
+  multi.hincrby(key, bufferFields.ERRORS, errored ? 1 : 0);
   multi.expire(key, TTL_BUFFER); // Set expiration to keep some (short) history
 
   await (multi as any).execAsync();
@@ -81,13 +90,17 @@ async function updateBuffer(key: string, duration: number, errored: boolean): Pr
 type Callback = (value: number) => void;
 
 async function updateEWMAs(component: string, bufferKey: string): Promise<void> {
+  logger.debug(`${component}: Locking...`);
   const lock = await redlock.lock(component, TTL_LOCKS);
+  logger.debug(`${component}: Locked`);
   const buffer: MetricsBuffer | null = await (bufferRedisClient as any).hgetallAsync(bufferKey);
   if (!buffer) {
+    logger.debug(`${component}: Buffer empty (${buffer}). Unlocking...`);
     // the buffer was empty, so it was already processed and there is nothing more to do!
     return lock.unlock();
   }
 
+  logger.debug(`${component}: Aggregating buffer...`);
   const metrics = aggregateBuffer(buffer);
   const [ewmaKey, ewmaSquaresKey] = [buildEWMAKey(component), buildEWMASquaresKey(component)];
   const [ewmas, ewmaSquares]: ComponentMetrics[] = await Promise.all(
@@ -107,13 +120,16 @@ async function updateEWMAs(component: string, bufferKey: string): Promise<void> 
   multi.expire(ewmaSquaresKey, TTL_EWMAS);
 
   try {
+    logger.debug(`${component}: Executing multi...`);
     await (multi as any).execAsync();
     (bufferRedisClient as any).delAsync(bufferKey).catch(logger.error); // fire-n-forget (don't await)
   } catch (error) {
+    logger.debug(`${component}: ERROR ${error}. Unlocking!`);
     await lock.unlock();
     throw error;
   }
 
+  logger.debug(`${component}: Updated. Unlocking!`);
   return lock.unlock();
 }
 
@@ -123,7 +139,7 @@ function updateEWMA(currentMeasure: number, ewmas: ComponentMetrics, field: stri
   callback(EWMA(currentEWMA, currentMeasure));
 }
 
-export function aggregateBuffer(metrics: MetricsBuffer): ComponentMetrics {
+function aggregateBuffer(metrics: MetricsBuffer): ComponentMetrics {
   return {
     throughput: metrics[bufferFields.THROUGHPUT],
     meanResponseTimeMs: metrics[bufferFields.TOTAL_MS] / metrics[bufferFields.THROUGHPUT],
@@ -134,6 +150,7 @@ export function aggregateBuffer(metrics: MetricsBuffer): ComponentMetrics {
 // --- Helper functions ---
 
 function deserializeTs(serialized: string): number {
+  logger.debug(`Deserializing ${serialized}`);
   return new Date(serialized).getTime(); // TODO change if serialization changes
 }
 
@@ -146,9 +163,7 @@ function minuteFloor(timestamp: number): number {
 }
 
 function buildBufferKey(component: string, ts: number): string {
-  const key = join(component, serializeTs(ts));
-  logger.debug(`built key "${key}"`);
-  return key;
+  return join(component, serializeTs(ts));
 }
 
 function join(...args: string[]): string {
