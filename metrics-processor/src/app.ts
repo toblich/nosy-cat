@@ -1,5 +1,5 @@
 import { consume } from "./kafka-integration";
-import { logger, createZipkinContextTracer, ZipkinSpan, ComponentCall, Producer } from "helpers";
+import { logger, createZipkinContextTracer, ZipkinSpan, HistoricMetric, Producer } from "helpers";
 import { processRequest } from "./metrics";
 
 const { tracer } = createZipkinContextTracer("metrics-processor");
@@ -12,8 +12,13 @@ consume(tracer, "ingress", onEachMessage);
 
 // ---
 
-async function processSpan(span: ZipkinSpan): Promise<ComponentCall> {
-  logger.debug(`processing span ${JSON.stringify(span, null, 4)}`);
+interface ComponentHistoricMetrics {
+  component: string;
+  metrics: HistoricMetric[];
+}
+
+async function processSpan(span: ZipkinSpan): Promise<ComponentHistoricMetrics | null> {
+  logger.info(`processing span ${JSON.stringify(span, null, 4)}`);
   const errored = hasErrored(span);
   const remoteEndpointName = (span.remoteEndpoint && span.remoteEndpoint.serviceName) || undefined;
   const localEndpointName = (span.localEndpoint && span.localEndpoint.serviceName) || undefined;
@@ -25,31 +30,19 @@ async function processSpan(span: ZipkinSpan): Promise<ComponentCall> {
 
   const component = span.kind === "SERVER" ? localEndpointName : remoteEndpointName;
 
-  await processRequest({ component, ...metrics });
-
-  // TODO this should no longer return these ComponentCalls
-  // TODO It should return the set of EWMA + EWMAStdDev + Observation values
-  if (span.kind === "SERVER") {
-    return {
-      callee: localEndpointName,
-      caller: remoteEndpointName,
-      metrics,
-    };
+  const processedMetrics = await processRequest({ component, ...metrics });
+  if (!processedMetrics || processedMetrics.length === 0) {
+    logger.debug(`There are no resulting processed metrics for component ${component}`);
+    return null;
   }
 
-  return {
-    callee: remoteEndpointName,
-    caller: localEndpointName,
-    metrics,
-  };
+  return { component, metrics: processedMetrics };
 }
 
-async function processSpans(value: ZipkinSpan[] | ZipkinSpan): Promise<ComponentCall[]> {
-  if (Array.isArray(value)) {
-    return Promise.all(value.map(processSpan));
-  }
-
-  return Promise.all([processSpan(value)]);
+async function processSpans(value: ZipkinSpan[] | ZipkinSpan): Promise<ComponentHistoricMetrics[]> {
+  const valuesArray = Array.isArray(value) ? value : [value];
+  const results = await Promise.all(valuesArray.map(processSpan));
+  return results.filter((c: ComponentHistoricMetrics | null) => c);
 }
 
 async function onEachMessage(producer: Producer, args: any): Promise<void> {
@@ -59,16 +52,22 @@ async function onEachMessage(producer: Producer, args: any): Promise<void> {
   const value = JSON.parse(message.value.toString());
 
   logger.debug(`value ${JSON.stringify(value)}`);
-  const componentCalls = await processSpans(value);
+  const componentHistoricMetrics = await processSpans(value);
 
-  logger.debug(`componentCalls ${JSON.stringify(componentCalls)}`);
+  if (componentHistoricMetrics.length === 0) {
+    // if there are no new values, just do nothing
+    logger.info("Not posting anything, as there is no relevant info");
+    return;
+  }
+
+  logger.info(`Posting message to Kafka: ${JSON.stringify(componentHistoricMetrics, null, 4)}`);
 
   try {
     await producer.send({
       topic: "metrics-processor",
       messages: [
         {
-          value: JSON.stringify(componentCalls),
+          value: JSON.stringify(componentHistoricMetrics),
         },
       ],
     });
@@ -79,7 +78,7 @@ async function onEachMessage(producer: Producer, args: any): Promise<void> {
 
 function hasErrored(span: ZipkinSpan): boolean {
   if (span.tags && span.tags["http.status_code"]) {
-    return span.tags["http.status_code"] > 400;
+    return span.tags["http.status_code"] >= 400;
   }
 
   return false;
