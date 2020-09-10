@@ -12,7 +12,6 @@ import {
   Producer,
   MetricTypes
 } from "helpers";
-import thresholds from "./thresholds";
 import { Range, Metrics } from "./types";
 import { capitalize, mapValues } from "lodash";
 
@@ -42,6 +41,7 @@ export async function processComponentCall(producer: Producer, serviceValue: Com
     meanResponseTimeMs: getServiceThreshold(serviceValue, "meanResponseTimeMs"),
     throughput: getServiceThreshold(serviceValue, "throughput")
   };
+
   logger.debug(`thresholds: ${JSON.stringify(serviceThresholds, null, 2)}`);
   logger.debug(`component: ${JSON.stringify(component, null, 2)}`);
 
@@ -51,6 +51,7 @@ export async function processComponentCall(producer: Producer, serviceValue: Com
   const serviceHasAnError = Object.keys(errorsByMetric).some((metricKey: string) => errorsByMetric[metricKey]);
 
   logger.debug(`serviceHasAnError: ${serviceHasAnError}`);
+
   const serviceIsBackToNormal = wasServiceAnomalous(component.status) && !serviceHasAnError;
   logger.debug(`serviceIsBackToNormal: ${serviceIsBackToNormal}`);
 
@@ -121,18 +122,7 @@ async function onEveryMessage(producer: Producer, entries: Entry[]): Promise<voi
 }
 
 function getServiceThreshold(value: ComponentCall, type: keyof Metrics): Range {
-  if (!thresholds[value.callee]) {
-    thresholds[value.callee] = {
-      errorRate: { minimum: 0, maximum: 0.5 },
-      meanResponseTimeMs: { minimum: 0, maximum: 1200000 },
-      throughput: {
-        minimum: 0,
-        maximum: 10000
-      }
-    };
-  }
-
-  return thresholds[value.callee][type];
+  return { maximum: 1, minimum: 0 };
 }
 
 function metricHasAnomaly(threshold: Range, value: number): boolean {
