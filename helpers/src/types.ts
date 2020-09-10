@@ -6,7 +6,8 @@ export enum ComponentStatus {
   SUSPICIOUS = "SUSPICIOUS",
   CONFIRMED = "CONFIRMED",
   VICTIM = "VICTIM",
-  PERPETRATOR = "PERPETRATOR"
+  PERPETRATOR = "PERPETRATOR",
+  HEALING = "HEALING"
 }
 
 export enum ZipkinSpanKind {
