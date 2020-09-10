@@ -6,13 +6,12 @@ import {
   DependencyDetectionMessage,
   generateGraphClient,
   ComponentStatus,
-  ComponentCall,
-  Component,
-  Dictionary,
   Producer,
-  MetricTypes
+  MetricTypes,
+  ComponentHistoricMetrics,
+  HistoricMetric
 } from "helpers";
-import { Range, Metrics } from "./types";
+import { Range } from "./types";
 import { capitalize, mapValues } from "lodash";
 
 const { tracer } = createZipkinContextTracer("anomaly-detector");
@@ -27,59 +26,60 @@ const graphClient = generateGraphClient(`http://${process.env.GRAPH_HOST}:${proc
 
 // ---
 
-function getErrorsByMetric(serviceThresholds: Metrics, service: Component): Dictionary<boolean> {
-  return mapValues(serviceThresholds, (threshold: Range, metricKey: string): boolean =>
-    metricHasAnomaly(threshold, service.metrics[metricKey])
-  );
-}
+const ACCEPTED_STD_DEVIATIONS = 3;
 
-export async function processComponentCall(producer: Producer, serviceValue: ComponentCall): Promise<void> {
-  const component = (await graphClient.getService(serviceValue.callee)).body;
+export async function processComponentCall(
+  producer: Producer,
+  componentMetrics: ComponentHistoricMetrics
+): Promise<void> {
+  logger.debug(`componentMetrics: ${JSON.stringify(componentMetrics, null, 2)}`);
 
-  const serviceThresholds: Metrics = {
-    errorRate: getServiceThreshold(serviceValue, "errorRate"),
-    meanResponseTimeMs: getServiceThreshold(serviceValue, "meanResponseTimeMs"),
-    throughput: getServiceThreshold(serviceValue, "throughput")
-  };
-
-  logger.debug(`thresholds: ${JSON.stringify(serviceThresholds, null, 2)}`);
+  const componentId = componentMetrics.component;
+  const component = (await graphClient.getService(componentId)).body; // TODO replace with direct Neo4J Cipher query
   logger.debug(`component: ${JSON.stringify(component, null, 2)}`);
 
-  const errorsByMetric = getErrorsByMetric(serviceThresholds, component);
-  logger.debug(`errorsByMetric: ${JSON.stringify(errorsByMetric, null, 2)}`);
+  const errorMessages = componentMetrics.metrics
+    .map((metric: HistoricMetric) => {
+      const thresholds: Range = {
+        minimum: metric.historicAvg - ACCEPTED_STD_DEVIATIONS * metric.historicStdDev,
+        maximum: metric.historicAvg + ACCEPTED_STD_DEVIATIONS * metric.historicStdDev
+      };
 
-  const serviceHasAnError = Object.keys(errorsByMetric).some((metricKey: string) => errorsByMetric[metricKey]);
+      logger.debug(`thresholds (${metric.name}): ${JSON.stringify(thresholds, null, 2)}`);
 
-  logger.debug(`serviceHasAnError: ${serviceHasAnError}`);
+      return metricHasAnomaly(thresholds, metric.latest)
+        ? getMetricErrorMessage(
+            MetricTypes[metric.name],
+            metric.latest,
+            thresholds.maximum,
+            thresholds.minimum,
+            componentId
+          )
+        : null;
+    })
+    .filter(Boolean);
 
-  const serviceIsBackToNormal = wasServiceAnomalous(component.status) && !serviceHasAnError;
+  const hasErrored = errorMessages.length > 0;
+
+  logger.debug(`hasErrored: ${hasErrored}`);
+  logger.debug(`errorMessages: ${JSON.stringify(errorMessages, null, 2)}`);
+
+  const serviceIsBackToNormal = wasServiceAnomalous(component.status) && !hasErrored;
   logger.debug(`serviceIsBackToNormal: ${serviceIsBackToNormal}`);
 
   if (serviceIsBackToNormal) {
     await graphClient.updateServiceMetrics(component.id, ComponentStatus.NORMAL);
   }
 
-  if (!serviceHasAnError) {
+  if (!hasErrored) {
     return;
   }
 
-  const serviceIsStillAnomalous = wasServiceAnomalous(component.status) && serviceHasAnError;
+  const serviceIsStillAnomalous = wasServiceAnomalous(component.status) && hasErrored;
 
   if (serviceIsStillAnomalous) {
     return;
   }
-
-  const errorMessages = mapValues(
-    errorsByMetric,
-    (metricHasError: boolean, metricKey: string): string =>
-      metricHasError &&
-      getMetricErrorMessage(
-        MetricTypes[metricKey],
-        component.metrics[metricKey],
-        serviceThresholds[metricKey],
-        serviceValue.callee
-      )
-  );
 
   const response = (await graphClient.updateServiceMetrics(component.id, ComponentStatus.CONFIRMED)).body;
   const newServiceStatus = response[component.id] && response[component.id].to.status;
@@ -107,11 +107,9 @@ async function onEveryMessage(producer: Producer, entries: Entry[]): Promise<voi
     try {
       logger.debug(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
-      const componentCalls: ComponentCall[] = JSON.parse(message.value.toString());
+      const componentHistoricMetrics: ComponentHistoricMetrics = JSON.parse(message.value.toString());
 
-      await Promise.all(
-        componentCalls.map((componentCall: ComponentCall) => processComponentCall(producer, componentCall))
-      );
+      await processComponentCall(producer, componentHistoricMetrics);
     } catch (error) {
       logger.error(`Error processing an entry: ${error}`);
       logger.data(`The entry was: ${JSON.stringify(entry)}`);
@@ -119,10 +117,6 @@ async function onEveryMessage(producer: Producer, entries: Entry[]): Promise<voi
   });
 
   await Promise.all(processMessages);
-}
-
-function getServiceThreshold(value: ComponentCall, type: keyof Metrics): Range {
-  return { maximum: 1, minimum: 0 };
 }
 
 function metricHasAnomaly(threshold: Range, value: number): boolean {
@@ -133,15 +127,24 @@ function wasServiceAnomalous(componentStatus: ComponentStatus): boolean {
   return [ComponentStatus.CONFIRMED, ComponentStatus.PERPETRATOR, ComponentStatus.VICTIM].includes(componentStatus);
 }
 
-function getMetricErrorMessage(type: MetricTypes, value: number, threshold: number, serviceName: string): any {
+function getMetricErrorMessage(
+  type: MetricTypes,
+  value: number,
+  maximum: number,
+  minimum: number,
+  serviceName: string
+): any {
   const message = `The service ${serviceName} is presenting an anomaly with the ${capitalize(
     type
-  )}, the expected value is ${JSON.stringify(threshold)} and the current value is ${value}`;
+  )}, the expected value should be between ${JSON.stringify(minimum)} and ${JSON.stringify(
+    maximum
+  )} and the current value is ${value}`;
 
   return {
     serviceName,
     type,
-    expected: threshold,
+    minimum,
+    maximum,
     value,
     message
   };

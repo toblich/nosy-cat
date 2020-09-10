@@ -64,6 +64,11 @@ export interface HistoricMetric {
   historicStdDev: number;
 }
 
+export interface ComponentHistoricMetrics {
+  component: string;
+  metrics: HistoricMetric[];
+}
+
 export interface ComponentCall {
   caller?: string;
   callee: string;

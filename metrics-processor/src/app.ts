@@ -1,5 +1,12 @@
 import { consume } from "./kafka-integration";
-import { logger, createZipkinContextTracer, ZipkinSpan, HistoricMetric, Producer } from "helpers";
+import {
+  logger,
+  createZipkinContextTracer,
+  ZipkinSpan,
+  ComponentHistoricMetrics,
+  HistoricMetric,
+  Producer
+} from "helpers";
 import { processRequest } from "./metrics";
 
 const { tracer } = createZipkinContextTracer("metrics-processor");
@@ -12,11 +19,6 @@ consume(tracer, "ingress", onEachMessage);
 
 // ---
 
-interface ComponentHistoricMetrics {
-  component: string;
-  metrics: HistoricMetric[];
-}
-
 async function processSpan(span: ZipkinSpan): Promise<ComponentHistoricMetrics | null> {
   logger.info(`processing span ${JSON.stringify(span, null, 4)}`);
   const errored = hasErrored(span);
@@ -25,7 +27,7 @@ async function processSpan(span: ZipkinSpan): Promise<ComponentHistoricMetrics |
   const metrics = {
     duration: span.duration,
     errored,
-    timestamp: span.timestamp,
+    timestamp: span.timestamp
   };
 
   const component = span.kind === "SERVER" ? localEndpointName : remoteEndpointName;
@@ -67,9 +69,9 @@ async function onEachMessage(producer: Producer, args: any): Promise<void> {
       topic: "metrics-processor",
       messages: [
         {
-          value: JSON.stringify(componentHistoricMetrics),
-        },
-      ],
+          value: JSON.stringify(componentHistoricMetrics)
+        }
+      ]
     });
   } catch (error) {
     logger.error(error);
