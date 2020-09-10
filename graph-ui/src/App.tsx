@@ -7,31 +7,31 @@ import { ComponentStatus, UIGraph, UINode } from "helpers/build/types";
 
 const graph: UIGraph = {
   nodes: [],
-  edges: []
+  edges: [],
 };
 
 const options: Options = {
   layout: {
-    hierarchical: true
+    hierarchical: true,
   },
   edges: {
-    color: "#000000"
+    color: "#000000",
   },
   height: "100%",
   autoResize: false,
   physics: {
-    enabled: false
+    enabled: false,
   },
   clickToUse: false,
   interaction: {
-    dragNodes: false
-  }
+    dragNodes: false,
+  },
 };
 
 const events = {
   select: (event: any): void => {
     // const { nodes, edges } = event;
-  }
+  },
 };
 
 const colorMap = {
@@ -39,7 +39,7 @@ const colorMap = {
   [ComponentStatus.SUSPICIOUS]: "#FCF6B1",
   [ComponentStatus.PERPETRATOR]: "#F72C25",
   [ComponentStatus.VICTIM]: "#F7B32B",
-  [ComponentStatus.CONFIRMED]: "#F7B32B"
+  [ComponentStatus.CONFIRMED]: "#F7B32B",
 };
 
 const prettify = (newGraph: UIGraph): UIGraph => {
@@ -47,8 +47,8 @@ const prettify = (newGraph: UIGraph): UIGraph => {
     ...newGraph,
     nodes: newGraph.nodes.map((node: UINode) => ({
       ...node,
-      color: colorMap[node.metadata.status as ComponentStatus]
-    }))
+      color: "blue",
+    })),
   };
 };
 
@@ -58,7 +58,7 @@ class App extends React.PureComponent<any, any> {
   constructor(props: any) {
     super(props);
     this.state = {
-      graph
+      graph,
     };
 
     this.socket = connect("http://localhost:4000");
@@ -67,7 +67,7 @@ class App extends React.PureComponent<any, any> {
   public componentDidMount(): void {
     this.socket.on("graph", (newGraph: UIGraph): void => {
       this.setState({
-        graph: prettify(newGraph)
+        graph: prettify(newGraph),
       });
     });
   }

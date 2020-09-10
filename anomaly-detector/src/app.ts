@@ -9,14 +9,14 @@ import {
   Producer,
   MetricTypes,
   ComponentHistoricMetrics,
-  HistoricMetric
+  HistoricMetric,
 } from "helpers";
 import { Range } from "./types";
 import { capitalize, mapValues } from "lodash";
 
 const { tracer } = createZipkinContextTracer("anomaly-detector");
 
-consume(tracer, "dependency-detector", onEveryMessage);
+consume(tracer, "metrics-processor", onEveryMessage);
 
 if (!process.env.GRAPH_PORT || !process.env.GRAPH_HOST) {
   throw Error("Missing Graph host values");
@@ -42,7 +42,7 @@ export async function processComponentCall(
     .map((metric: HistoricMetric) => {
       const thresholds: Range = {
         minimum: metric.historicAvg - ACCEPTED_STD_DEVIATIONS * metric.historicStdDev,
-        maximum: metric.historicAvg + ACCEPTED_STD_DEVIATIONS * metric.historicStdDev
+        maximum: metric.historicAvg + ACCEPTED_STD_DEVIATIONS * metric.historicStdDev,
       };
 
       logger.debug(`thresholds (${metric.name}): ${JSON.stringify(thresholds, null, 2)}`);
@@ -81,16 +81,16 @@ export async function processComponentCall(
     return;
   }
 
-  const response = (await graphClient.updateServiceMetrics(component.id, ComponentStatus.CONFIRMED)).body;
+  const response = (await graphClient.updateServiceMetrics(component.id, ComponentStatus.CONFIRMED)).body; // TODO replace with direct Neo4J Cipher query
   const newServiceStatus = response[component.id] && response[component.id].to.status;
   if (newServiceStatus === ComponentStatus.PERPETRATOR) {
     await producer.send({
       topic: "alerts",
       messages: [
         {
-          value: JSON.stringify(errorMessages)
-        }
-      ]
+          value: JSON.stringify(errorMessages),
+        },
+      ],
     });
   }
 }
@@ -107,9 +107,11 @@ async function onEveryMessage(producer: Producer, entries: Entry[]): Promise<voi
     try {
       logger.debug(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
-      const componentHistoricMetrics: ComponentHistoricMetrics = JSON.parse(message.value.toString());
+      const componentHistoricMetrics: ComponentHistoricMetrics[] = JSON.parse(message.value.toString());
 
-      await processComponentCall(producer, componentHistoricMetrics);
+      await Promise.all(
+        componentHistoricMetrics.map((c: ComponentHistoricMetrics) => processComponentCall(producer, c))
+      );
     } catch (error) {
       logger.error(`Error processing an entry: ${error}`);
       logger.data(`The entry was: ${JSON.stringify(entry)}`);
@@ -146,6 +148,6 @@ function getMetricErrorMessage(
     minimum,
     maximum,
     value,
-    message
+    message,
   };
 }

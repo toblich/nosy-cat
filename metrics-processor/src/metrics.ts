@@ -4,7 +4,7 @@ import { map, mapValues } from "lodash";
 
 import { EWMA, EWMAStdDeviation } from "./ewma";
 
-const MIN_IN_MS = 60000; // 1 min in milliseconds
+const MIN_IN_MS = 10000; // TODO 1 min in milliseconds
 const DELIM = ":";
 const TTL_BUFFER = 60 * 10; // 10 mins
 const TTL_LOCKS = 1000; // in ms, as this is for redlock and not plain redis
@@ -23,7 +23,7 @@ const redlock = new Redlock([locksRedisClient], {});
 const bufferFields = {
   THROUGHPUT: "throughput",
   ERRORS: "errors",
-  TOTAL_MS: "total_ms",
+  TOTAL_uS: "total_us", // TODO this is actually in MICROseconds
 };
 
 const metricFields = {
@@ -95,7 +95,7 @@ function prefixRemover(prefix: string): (key: string) => string {
 async function updateBuffer(key: string, duration: number, errored: boolean): Promise<void> {
   const multi = bufferRedisClient.multi();
   multi.hincrby(key, bufferFields.THROUGHPUT, 1);
-  multi.hincrby(key, bufferFields.TOTAL_MS, duration);
+  multi.hincrby(key, bufferFields.TOTAL_uS, duration);
   multi.hincrby(key, bufferFields.ERRORS, errored ? 1 : 0);
   multi.expire(key, TTL_BUFFER); // Set expiration to keep some (short) history
   await exec(multi);
@@ -168,7 +168,7 @@ function updateEWMA(currentMeasure: number, ewmas: ComponentMetrics, field: stri
 function aggregateBuffer(metrics: MetricsBuffer): ComponentMetrics {
   return {
     throughput: +metrics[bufferFields.THROUGHPUT],
-    meanResponseTimeMs: metrics[bufferFields.TOTAL_MS] / metrics[bufferFields.THROUGHPUT],
+    meanResponseTimeMs: metrics[bufferFields.TOTAL_uS] / metrics[bufferFields.THROUGHPUT],
     errorRate: metrics[bufferFields.ERRORS] / metrics[bufferFields.THROUGHPUT],
   };
 }

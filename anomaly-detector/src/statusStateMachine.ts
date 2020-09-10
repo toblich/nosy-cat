@@ -22,10 +22,10 @@ const stateMap = {
     events: {
       error: (_: number): StateResponse => ({
         status: ComponentStatus.SUSPICIOUS,
-        occurrences: 0
+        occurrences: 0,
       }),
-      normal: (_: number): StateResponse => ({ status: ComponentStatus.NORMAL, occurrences: 0 })
-    }
+      normal: (_: number): StateResponse => ({ status: ComponentStatus.NORMAL, occurrences: 0 }),
+    },
   },
   [ComponentStatus.SUSPICIOUS]: {
     events: {
@@ -33,14 +33,14 @@ const stateMap = {
         occurrences + 1 < MAX_CONFIRMED_COUNT
           ? {
               status: ComponentStatus.SUSPICIOUS,
-              occurrences: occurrences + 1
+              occurrences: occurrences + 1,
             }
           : {
               status: ComponentStatus.CONFIRMED,
-              occurrences: 0
+              occurrences: 0,
             },
-      normal: (): StateResponse => ({ status: ComponentStatus.NORMAL, occurrences: 0 })
-    }
+      normal: (): StateResponse => ({ status: ComponentStatus.NORMAL, occurrences: 0 }),
+    },
   },
   [ComponentStatus.CONFIRMED]: anomalousState(ComponentStatus.CONFIRMED),
   [ComponentStatus.VICTIM]: anomalousState(ComponentStatus.VICTIM),
@@ -52,14 +52,14 @@ const stateMap = {
         occurrences + 1 < MAX_HEALED_COUNT
           ? {
               status: ComponentStatus.HEALING,
-              occurrences: occurrences + 1
+              occurrences: occurrences + 1,
             }
           : {
               status: ComponentStatus.NORMAL,
-              occurrences: 0
-            }
-    }
-  }
+              occurrences: 0,
+            },
+    },
+  },
 };
 
 function anomalousState(
@@ -70,22 +70,8 @@ function anomalousState(
       error: (_: number): StateResponse => ({ status, occurrences: 0 }),
       normal: (): StateResponse => ({
         status: ComponentStatus.HEALING,
-        occurrences: 0
-      })
-    }
+        occurrences: 0,
+      }),
+    },
   };
-}
-
-// ----
-
-interface ComponentHistoricMetrics {
-  component: string;
-  metrics: HistoricMetric[];
-}
-
-export interface HistoricMetric {
-  name: string;
-  latest: number;
-  historicAvg: number;
-  historicStdDev: number;
 }
