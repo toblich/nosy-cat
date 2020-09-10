@@ -1,5 +1,26 @@
 import { redis, logger, ComponentMetrics } from "helpers";
 
+/*
+Now, we need to accumulate metrics in Redis for the ongoing minute. On the first request to update metrics
+that has a timestamp out of that minute, we commit to the graph DB the metrics of the expired minute. 
+In that case, 
+it must also return to the DependencyDetector:
+- Last minute was healthy/unhealthy
+- Current status
+- Repetitions of current status (for suspicious ones)
+
+component.
+In the DB, it must store: 
+- (Maybe) Last known committed value (to be used by anomaly-detector: It could also just be returned to the dep detector and have that service pass it on to the anomaly detector)
+- EWMA of the metric
+- EWMA of the square of the metric
+
+Then, the values returned are the same as always:
+- minimum
+- maximum
+
+*/
+
 const redisClient = redis.createClient({
   host: process.env.REDIS_HOST || "localhost"
 });

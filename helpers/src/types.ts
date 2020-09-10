@@ -7,17 +7,18 @@ export enum ComponentStatus {
   CONFIRMED = "CONFIRMED",
   VICTIM = "VICTIM",
   PERPETRATOR = "PERPETRATOR",
+  HEALING = "HEALING"
 }
 
 export enum ZipkinSpanKind {
   SERVER = "SERVER",
-  CLIENT = "CLIENT",
+  CLIENT = "CLIENT"
 }
 
 export enum MetricTypes {
   errorRate = "Error Rate",
   throughput = "Throughput",
-  meanResponseTimeMs = "Mean Response Time",
+  meanResponseTimeMs = "Mean Response Time"
 }
 
 export interface ZipkinSpan {
