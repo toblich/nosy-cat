@@ -1,4 +1,4 @@
-FROM node:12 AS helpers
+FROM node:14 AS helpers
 
 RUN mkdir -p /project/helpers
 WORKDIR /project/helpers
@@ -9,7 +9,7 @@ RUN npm i
 
 ####
 
-FROM node:12 as service
+FROM node:14 as service
 
 RUN mkdir -p /project/app
 WORKDIR /project/app
