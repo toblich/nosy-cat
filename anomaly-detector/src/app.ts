@@ -39,7 +39,7 @@ export async function processComponentCall(
   logger.debug(`component: ${JSON.stringify(component, null, 2)}`);
 
   const errorMessages = componentMetrics.metrics
-    .map((metric: HistoricMetric) => {
+    .map((metric: HistoricMetric): any => {
       const thresholds: Range = {
         minimum: metric.historicAvg - ACCEPTED_STD_DEVIATIONS * metric.historicStdDev,
         maximum: metric.historicAvg + ACCEPTED_STD_DEVIATIONS * metric.historicStdDev,
@@ -101,22 +101,26 @@ interface Entry {
 }
 
 async function onEveryMessage(producer: Producer, entries: Entry[]): Promise<void> {
-  const processMessages = entries.map(async (entry: Entry) => {
-    const { partition, message } = entry;
+  const processMessages = entries.map(
+    async (entry: Entry): Promise<void> => {
+      const { partition, message } = entry;
 
-    try {
-      logger.debug(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
+      try {
+        logger.debug(JSON.stringify({ partition, offset: message.offset, value: message.value.toString() }));
 
-      const componentHistoricMetrics: ComponentHistoricMetrics[] = JSON.parse(message.value.toString());
+        const componentHistoricMetrics: ComponentHistoricMetrics[] = JSON.parse(message.value.toString());
 
-      await Promise.all(
-        componentHistoricMetrics.map((c: ComponentHistoricMetrics) => processComponentCall(producer, c))
-      );
-    } catch (error) {
-      logger.error(`Error processing an entry: ${error}`);
-      logger.data(`The entry was: ${JSON.stringify(entry)}`);
+        await Promise.all(
+          componentHistoricMetrics.map(
+            (c: ComponentHistoricMetrics): Promise<void> => processComponentCall(producer, c)
+          )
+        );
+      } catch (error) {
+        logger.error(`Error processing an entry: ${error}`);
+        logger.data(`The entry was: ${JSON.stringify(entry)}`);
+      }
     }
-  });
+  );
 
   await Promise.all(processMessages);
 }
