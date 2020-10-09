@@ -6,12 +6,15 @@ import {
   AddComponentsReq,
   EmptyReq,
   ComponentCall,
-  UIGraph
+  UIGraph,
 } from "helpers";
-import * as service from "./service";
+import * as service from "./service"; // TODO this is legacy (demo 1)
 import * as graphService from "./graphService";
+
+// ---
+
 export async function addComponentsAndDependencies(req: AddComponentsReq, res: Response): Promise<void> {
-  await Promise.all(req.body.map((component: ComponentCall) => service.add(component)));
+  // await Promise.all(req.body.map((component: ComponentCall) => service.add(component)));
   await graphService.add(req.body);
   res.status(201).send();
 }
@@ -35,22 +38,24 @@ export async function wsGraphAsNodesAndEdges(): Promise<UIGraph> {
 }
 
 export async function searchComponent(req: ComponentIdReq, res: Response): Promise<void> {
-  const component = await service.search(req.body.component);
+  const component = await graphService.search(req.body.component);
   res.json(component);
 }
 
-export function findRootCauses(req: ComponentIdReq, res: Response): void {
-  const causes = service.findRootCauses(req.body.component);
+export async function findRootCauses(req: ComponentIdReq, res: Response): Promise<void> {
+  const causes = await graphService.findRootCauses(req.body.component);
   res.json(causes);
 }
 
 export async function updateComponentStatus(req: UpdateComponentStatusReq, res: Response): Promise<void> {
   const { component, status } = req.body;
-  const changes = await service.updateComponentStatus(component, status);
+  // const changes = await service.updateComponentStatus(component, status);
+  const changes = await graphService.updateComponentStatus(component, status);
   res.status(200).json(changes);
 }
 
 export async function resetGraph(req: EmptyReq, res: Response): Promise<void> {
-  await service.clear();
+  // await service.clear();
+  await graphService.clear();
   res.status(204).send();
 }

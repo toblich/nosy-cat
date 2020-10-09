@@ -2,23 +2,24 @@ import * as Kafka from "kafkajs";
 import { Request } from "express";
 
 export enum ComponentStatus {
+  // It is relevant that the enum value equals the enum key
   NORMAL = "NORMAL",
   SUSPICIOUS = "SUSPICIOUS",
   CONFIRMED = "CONFIRMED",
   VICTIM = "VICTIM",
   PERPETRATOR = "PERPETRATOR",
-  HEALING = "HEALING"
+  HEALING = "HEALING",
 }
 
 export enum ZipkinSpanKind {
   SERVER = "SERVER",
-  CLIENT = "CLIENT"
+  CLIENT = "CLIENT",
 }
 
 export enum MetricTypes {
   errorRate = "Error Rate",
   throughput = "Throughput",
-  meanResponseTimeMs = "Mean Response Time"
+  meanResponseTimeMs = "Mean Response Time",
 }
 
 export interface ZipkinSpan {

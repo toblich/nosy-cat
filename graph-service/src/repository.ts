@@ -1,19 +1,8 @@
-// tslint:disable: no-console
-
-import { logger, ComponentCallMetrics } from "helpers";
+import { logger, ComponentCallMetrics, ComponentStatus as STATUS, status as statusUtils } from "helpers";
 import * as neo4j from "neo4j-driver";
 import { Component } from "./Graph";
 import { Request } from "express";
-
-enum STATUS {
-  Normal = "Normal",
-  Abnormal = "Abnormal",
-}
-
-const ANTISTATUS = {
-  [STATUS.Normal]: STATUS.Abnormal,
-  [STATUS.Abnormal]: STATUS.Normal,
-};
+import { inspect } from "util";
 
 export type Result = neo4j.QueryResult;
 export type Record = neo4j.Record;
@@ -107,8 +96,8 @@ export default class Repository {
               callee = $metrics,
               callee.id = $callee,
               callee.count = 1,
-              callee.status = "${STATUS.Normal}",
-              callee:${STATUS.Normal}
+              callee.status = "${STATUS.NORMAL}",
+              callee:${STATUS.NORMAL}
             ON MATCH SET
               callee.count = callee.count + 1
         `, // TODO update metrics
@@ -123,15 +112,15 @@ export default class Repository {
             caller = $emptyMetrics,
             caller.id = $caller,
             caller.count = 1,
-            caller.status = "${STATUS.Normal}",
-            caller:${STATUS.Normal}
+            caller.status = "${STATUS.NORMAL}",
+            caller:${STATUS.NORMAL}
         MERGE (callee:Component {id: $callee})
           ON CREATE SET
             callee = $metrics,
             callee.id = $callee,
             callee.count = 1,
-            callee.status = "${STATUS.Normal}",
-            callee:${STATUS.Normal}
+            callee.status = "${STATUS.NORMAL}",
+            callee:${STATUS.NORMAL}
           ON MATCH SET
             callee.count = callee.count + 1
         MERGE (caller)-[r:CALLS]->(callee)
@@ -149,24 +138,27 @@ export default class Repository {
    * getComponent s
    */
   public async getComponent(id: string, tx?: Transaction): Promise<Component> {
+    // TODO this is not fully a Component
     const result = await this.run(
-      "MATCH (component:Component {id: $id})-[]->(v:Component) RETURN component, v",
+      `MATCH (component:Component {id: $id})
+      OPTIONAL MATCH (component)-[]->(v:Component) 
+      RETURN component, v`,
       { id },
       tx
     );
-    // console.log(JSON.stringify(result, null, 4));
     // TODO cast result to "Component"?
     // const component = new Component(result)
+    logger.warn("COMPONENT " + inspect(result.records[0].get("component")));
     const node: neo4j.Node = result.records[0].get("component");
     const dependencies = result.records.map((x: neo4j.Record) => x.get("v"));
-    console.log("dependencies", dependencies);
-    // return new Component(node.properties.id);
-    return new Component("hardcoded-test-name");
+
+    const props: any = node.properties; // TODO this is a negrada
+    return new Component(props.id, new Set(dependencies), new Set(), props.status);
+    // return new Component("hardcoded-test-name");
   }
 
-  public async setStatus(id: string, status: string, tx?: Transaction): Promise<Result> {
-    const antistatus = ANTISTATUS[status];
-    if (!status || !antistatus) {
+  public async setStatus(id: string, status: STATUS, tx?: Transaction): Promise<Result> {
+    if (!STATUS[status]) {
       logger.warn(`Trying to set invalid status (id: ${id}, status: ${status}, tx: ${tx ? tx.debugId : "no-tx"})`);
       throw Error("InvalidStatus");
     }
@@ -174,11 +166,14 @@ export default class Repository {
     return this.run(
       `
         MATCH (x :Component {id: $id})
-        SET x:${status}, x.status = $status
-        REMOVE x:${antistatus}
+        REMOVE ${Object.values(STATUS)
+          .map((s: STATUS) => `x:${s}`)
+          .concat(["x:Abnormal"])
+          .join(", ")}
+        SET x:${status}, x.status = $status${statusUtils.isAnomalous(status) ? ", x:Abnormal" : ""}
         WITH x
         MATCH ()-[r:CALLS]->(x)
-        SET r.callee_is = $status
+        SET r.callee_is = "${statusUtils.isAnomalous(status) ? "Abnormal" : STATUS.NORMAL}"
       `,
       { id, status },
       tx
@@ -212,7 +207,7 @@ export default class Repository {
   public async getDependenciesBetween(
     ids: string[],
     tx?: Transaction
-  ): Promise<Array<{ callerId: string; calleeId: string }>> {
+  ): Promise<{ callerId: string; calleeId: string }[]> {
     const result = await this.run(
       `
       MATCH p = (caller :Component)-[]->(callee :Component)

@@ -1,6 +1,7 @@
+import { inspect } from "util";
 import * as httpErrors from "http-errors";
 
-import { keyBy, flatMap, takeRightWhile, uniqBy, dropRight } from "lodash";
+import { keyBy, flatMap, takeRightWhile, uniqBy, dropRight, endsWith } from "lodash";
 
 import {
   Component as HelperComponent,
@@ -36,7 +37,9 @@ export interface Node {
 const repository = new Repository();
 
 logger.warn("Initializing graph!");
-repository.clear();
+// repository.clear();
+logger.debug("Finding causal chain for XAPI");
+findCausalChain("xapi");
 
 ///////////////////////////
 // --- Service methods ---
@@ -63,6 +66,7 @@ export async function findCausalChain(initialId: string, tx?: Transaction): Prom
 
   if (result.records.length === 0) {
     // Caller is not abnormal, so there is no causal chain whatsoever
+    logger.debug("Exiting here");
     return [];
   }
 
@@ -70,16 +74,45 @@ export async function findCausalChain(initialId: string, tx?: Transaction): Prom
   const caller = result.records[0].get("caller").properties;
   const tail = result.records.map((r: Record) => r.get("resultNode")?.properties).filter((n: Node | null) => n);
 
+  logger.warn("CHAIN " + inspect([caller, ...tail]));
+
   return [caller, ...tail];
 }
 
 export async function findRootCauses(initialId: string): Promise<Node[]> {
   const abnormalSubgraph = await transact(async (tx: Transaction) => {
     const chain = await findCausalChain(initialId, tx);
-    return chain.length === 0 ? {} : toEntity(initialId, chain, tx);
+    return chain.length === 0 ? {} : await toEntity(initialId, chain, tx);
   });
 
   return findEnds(initialId, abnormalSubgraph);
+}
+
+interface Change {
+  id: string;
+  from: { status: ComponentStatus };
+  to: { status: ComponentStatus };
+}
+export async function updateComponentStatus(id: string, newStatus: ComponentStatus): Promise<Dictionary<Change>> {
+  const isNormal = status.isNormal(newStatus);
+  return transact(async (tx: Transaction) => {
+    const currentStatus = (await repository.getComponent(id)).status;
+    const wasNormal = status.isNormal(currentStatus);
+    logger.debug(`Previous Status: ${currentStatus} - newStatus: ${newStatus}`);
+    if (wasNormal === isNormal) {
+      // There was no change
+      return {};
+    }
+
+    await repository.setStatus(id, newStatus, tx);
+    if (!isNormal) {
+      const causalChain = await findCausalChain(id, tx);
+      // const ends = findEnds(initialId, abnormalSubgraph);
+      // const toBeUpdated = Object.values(abnormalSubgraph).every(x=>x.status === Perpetrator && !ends.includes(x));
+      // toBeUpdated.map(updateStatus(Victim))
+    }
+    return {};
+  });
 }
 
 /////////////////////
@@ -96,7 +129,7 @@ async function transact<T>(fn: (tx: Transaction) => Promise<T>): Promise<T> {
   try {
     const result = await fn(tx);
     if (tx.isOpen()) {
-      tx.commit();
+      await tx.commit();
     }
     return result;
   } catch (e) {
