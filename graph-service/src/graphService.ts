@@ -27,6 +27,7 @@ export interface Node {
   id: string;
   dependencies: string[];
   depsSet: Set<string>;
+  status: ComponentStatus;
   // TODO include and shape metrics here
 }
 
@@ -37,9 +38,19 @@ export interface Node {
 const repository = new Repository();
 
 logger.warn("Initializing graph!");
-// repository.clear();
-logger.debug("Finding causal chain for XAPI");
-findCausalChain("xapi");
+(async () => {
+  // TODO This is just for debugging
+  await clear();
+  const metrics = { duration: 1, errored: true, timestamp: Date.now() };
+  await add([{ caller: "A", callee: "B", metrics }]);
+  await add([{ caller: "B", callee: "A", metrics }]);
+  await add([{ caller: "C", callee: "D", metrics }]);
+  await updateComponentStatus("A", ComponentStatus.CONFIRMED);
+  await updateComponentStatus("C", ComponentStatus.CONFIRMED);
+  await updateComponentStatus("D", ComponentStatus.CONFIRMED);
+})();
+// logger.debug("Finding causal chain for XAPI");
+// findCausalChain("xapi");
 
 ///////////////////////////
 // --- Service methods ---
@@ -66,7 +77,6 @@ export async function findCausalChain(initialId: string, tx?: Transaction): Prom
 
   if (result.records.length === 0) {
     // Caller is not abnormal, so there is no causal chain whatsoever
-    logger.debug("Exiting here");
     return [];
   }
 
@@ -100,19 +110,74 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     const wasNormal = status.isNormal(currentStatus);
     logger.debug(`Previous Status: ${currentStatus} - newStatus: ${newStatus}`);
     if (wasNormal === isNormal) {
+      logger.debug("Not updating because status has not changed");
       // There was no change
       return {};
     }
 
+    // TODO Do Root Cause Detection here
     await repository.setStatus(id, newStatus, tx);
+    logger.debug(`isNormal: ${isNormal}`);
     if (!isNormal) {
-      const causalChain = await findCausalChain(id, tx);
-      // const ends = findEnds(initialId, abnormalSubgraph);
-      // const toBeUpdated = Object.values(abnormalSubgraph).every(x=>x.status === Perpetrator && !ends.includes(x));
-      // toBeUpdated.map(updateStatus(Victim))
+      // Mark perpetrators that called the new CONFIRMED node as victims
+      const perpetratorCallersResult = await repository.getCallersWithStatus(id, ComponentStatus.PERPETRATOR, tx);
+      const perpetratorCallerIds = perpetratorCallersResult.records.map((r: Record) => r.get("caller")?.properties.id);
+      await Promise.all(
+        perpetratorCallerIds.map((perpId: string) => repository.setStatus(perpId, ComponentStatus.VICTIM, tx))
+      );
+
+      // Analyze the chain beginning from the new CONFIRMED to determine perpetrators and victims
+      const chain = await findCausalChain(id, tx);
+      const abnormalSubgraph = chain.length === 0 ? {} : await toEntity(id, chain, tx);
+      logger.debug("ABNORMAL SUBGRAPH: " + inspect(abnormalSubgraph, false, 3));
+      const ends = findEnds(id, abnormalSubgraph);
+      logger.debug("ENDS: " + inspect(ends, false, 3));
+
+      const newPerpetrators = Object.values(abnormalSubgraph).filter((x: Node) => {
+        const isIncludedInEnds = ends.some((end: Node) => {
+          return x.id === end.id;
+        });
+
+        logger.debug(`x: ${x.id}, x.status: ${x.status}, in ends: ${isIncludedInEnds}`);
+        return (
+          x.status !== ComponentStatus.PERPETRATOR &&
+          ends.some((end: Node) => {
+            return x.id === end.id;
+          })
+        );
+      });
+      // .map((nodeToBeUpdated: Node) => repository.setStatus(nodeToBeUpdated.id, ComponentStatus.PERPETRATOR, tx));
+      logger.debug("newPerpetrators: " + inspect(newPerpetrators, false, 3));
+
+      const newVictims = Object.values(abnormalSubgraph).filter(
+        (x: Node) => x.status !== ComponentStatus.VICTIM && !ends.some((end: Node) => x.id === end.id)
+      );
+      // .map((nodeToBeUpdated: Node) => repository.setStatus(nodeToBeUpdated.id, ComponentStatus.VICTIM, tx));
+
+      logger.debug("newVictims: " + inspect(newVictims, false, 3));
+
+      await Promise.all([
+        updateStatuses(newPerpetrators, ComponentStatus.PERPETRATOR, tx),
+        updateStatuses(newVictims, ComponentStatus.VICTIM, tx),
+      ]);
+
+      const changes = asChanges(newPerpetrators, ComponentStatus.PERPETRATOR).concat(
+        asChanges(newVictims, ComponentStatus.VICTIM)
+      );
+      return keyBy(changes, "id");
+    } else {
+      // TODO
     }
     return {};
   });
+}
+
+function updateStatuses(nodes: Node[], newStatus: ComponentStatus, tx?: Transaction): Promise<Result[]> {
+  return Promise.all(nodes.map((x: Node) => repository.setStatus(x.id, newStatus, tx)));
+}
+
+function asChanges(nodes: Node[], newStatus: ComponentStatus): Change[] {
+  return nodes.map((x: Node) => ({ id: x.id, from: { status: x.status }, to: { status: newStatus } }));
 }
 
 /////////////////////
@@ -176,7 +241,10 @@ function findEnds(initialId: string, subgraph: Dictionary<Node>): Node[] {
     return [];
   }
 
+  // ! These two steps break the subgraph, as we cannot yet rebuild the original dependencies
+  // ! given that we've merged cycles into supernodes
   const ends = internalDFS(subgraph, initialId);
+  expandSupernodes(subgraph);
 
   // Dedupe and split super-nodes into their parts
   // TODO: Dependencies of nodes may still link to supernode instead of the original parts
@@ -220,6 +288,7 @@ function internalDFS(
       dependencies: Array.from(supernodeDepsSet),
       depsSet: supernodeDepsSet,
       nodes: cycle,
+      status: ComponentStatus.CONFIRMED,
     };
 
     // Remove existing nodes of the cycle merged into supernode from the graph an the visited set
@@ -236,6 +305,8 @@ function internalDFS(
 
     // For nodes that depended on something in the cycle, change that dep to be on the supernode
     for (const node of Object.values(subgraph)) {
+      // ! Here we're mutating the deps and we cannot later reconstruct the original deps as we cannot
+      // ! differentiate to which subnode of the supernode the dependency aimed.
       node.depsSet = new Set(node.dependencies.map((dep: string) => (cycleIdsSet.has(dep) ? supernodeId : dep)));
       node.dependencies = Array.from(node.depsSet);
     }
@@ -255,6 +326,22 @@ function internalDFS(
 
   path.push(component);
   return flatMap(component.dependencies, (depId: string) => internalDFS(subgraph, depId, visited, path, component.id));
+}
+
+function expandSupernodes(subgraph: Dictionary<Node>): void {
+  // ! This does not fully rebuild the previous links, as we've lost information of the specific dependencies
+  // ! inside the supernodes
+  for (const node of Object.values(subgraph)) {
+    if (!isSupernodeId(node.id)) {
+      continue;
+    }
+    const supernode = node as Supernode;
+    delete subgraph[supernode.id];
+    for (const subnode of supernode.nodes) {
+      subgraph[subnode.id] = subnode;
+    }
+  }
+  return;
 }
 
 const SUPERNODE_PREFIX = "__supernode_cycle";

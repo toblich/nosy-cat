@@ -92,6 +92,21 @@ PATCH {{base}}/graph/components/status
 Content-Type: application/json
 
 {
-  "component": "C",
+  "component": "B",
   "status": "CONFIRMED"
 }
+
+###
+
+PATCH {{base}}/graph/components/status
+Content-Type: application/json
+
+{
+  "component": "B",
+  "status": "NORMAL"
+}
+
+
+###
+
+DELETE {{base}}/graph

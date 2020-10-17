@@ -204,6 +204,17 @@ export default class Repository {
     );
   }
 
+  public async getCallersWithStatus(id: string, status: STATUS, tx?: Transaction): Promise<Result> {
+    return this.run(
+      `
+        MATCH (caller:Component:${status})-[]->(x :Component {id: $id})
+        RETURN (caller)
+      `,
+      { id },
+      tx
+    );
+  }
+
   public async getDependenciesBetween(
     ids: string[],
     tx?: Transaction
