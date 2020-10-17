@@ -92,7 +92,7 @@ PATCH {{base}}/graph/components/status
 Content-Type: application/json
 
 {
-  "component": "B",
+  "component": "C",
   "status": "CONFIRMED"
 }
 
