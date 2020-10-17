@@ -19,7 +19,7 @@
     "helpers": "file:../helpers",
     "http-errors": "^1.7.3",
     "lodash": "^4.17.15",
-    "neo4j-driver": "^4.0.1",
+    "neo4j-driver": "^4.X.X",
     "socket.io": "^2.3.0"
   },
   "devDependencies": {

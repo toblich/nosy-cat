@@ -34,6 +34,11 @@ export interface Node {
 //////////////////////////
 // --- Initialization ---
 //////////////////////////
+// TODO
+// ! When adding a CONFIRMED node below a PERPETRATOR SUPERNODE, we're not correctly processing the supernode.
+// Example: G <-> I -> H
+// When CONFIMING H after all others were confirmed, only I is changed to VICTIM (but both G&I should change as they're
+// part of the same supernode)
 
 const repository = new Repository();
 
@@ -60,15 +65,15 @@ logger.warn("Initializing graph!");
   // await add([{ caller: "B", callee: "A", metrics }]);
   await add([{ caller: "L", callee: "J", metrics }]);
   await add([{ caller: "J", callee: "L", metrics }]);
-  await Promise.all(Array.from("ABCDEF").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
+  // await Promise.all(Array.from("AC").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
   await Promise.all(Array.from("GHI").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
-  for (const n of Array.from("ABCD")) {
-    await updateComponentStatus(n, ComponentStatus.CONFIRMED);
-  }
-  logger.error("-------------------------------");
-  for (const n of Array.from("E")) {
-    await updateComponentStatus(n, ComponentStatus.CONFIRMED);
-  }
+  // for (const n of Array.from("IG")) {
+  //   await updateComponentStatus(n, ComponentStatus.CONFIRMED);
+  // }
+  // logger.error("-------------------------------");
+  // for (const n of Array.from("E")) {
+  //   await updateComponentStatus(n, ComponentStatus.CONFIRMED);
+  // }
 })();
 // logger.debug("Finding causal chain for XAPI");
 // findCausalChain("xapi");

@@ -31,8 +31,16 @@ export default class Repository {
     return this.driver.session(...args);
   }
 
+  // public async transact<T>(fn: (_: Transaction) => Promise<T>): Promise<T> {
+  //   logger.error(await this.driver.supportsTransactionConfig());
+  //   const session = this.session();
+  //   const result = await session.writeTransaction(fn);
+  //   await session.close();
+  //   return result;
+  // }
+
   public transaction(): Transaction {
-    const session = this.session();
+    const session = this.session({ defaultAccessMode: neo4j.session.WRITE });
     const tx: Transaction = session.beginTransaction();
     const commit = tx.commit.bind(tx);
     tx.commit = async (): Promise<void> => {
