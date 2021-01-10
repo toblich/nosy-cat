@@ -71,7 +71,7 @@ logger.warn("Initializing graph!");
   // await add([{ caller: "J", callee: "L", metrics }]);
   // await Promise.all(Array.from("AC").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
   // await Promise.all(Array.from("GHI").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
-  for (const n of Array.from("JGI")) {
+  for (const n of Array.from("GIJH")) {
     await updateComponentStatus(n, ComponentStatus.CONFIRMED);
   }
   // logger.error("-------------------------------");
@@ -181,7 +181,6 @@ async function setNewPerpetratorsAndVictims(id: string, tx: Transaction): Promis
   const abnormalSubgraph = chain.length === 0 ? {} : await toEntity(id, chain, tx);
   logger.debug("ABNORMAL SUBGRAPH: " + inspect(abnormalSubgraph, false, 3));
   const ends = findEnds(id, abnormalSubgraph);
-  logger.debug("ABNORMAL SUBGRAPH AFTER FINDING ENDS (should have supernodes): " + inspect(abnormalSubgraph, false, 3));
   logger.debug("ENDS: " + inspect(ends, false, 3));
 
   const newPerpetrators = expandSupernodes(
@@ -283,15 +282,8 @@ function findEnds(initialId: string, subgraph: Dictionary<Node>): Node[] {
   logger.info(`Abnormal subgraph before DFS ${inspect(subgraph, false, 3)}`);
   const ends = internalDFS(subgraph, initialId);
   logger.info(`Abnormal subgraph after DFS ${inspect(subgraph, false, 3)}`);
-  // expandSupernodes(subgraph);
-  // logger.info(`Abnormal subgraph after EXPANSION ${inspect(subgraph, false, 3)}`);
 
-  // Dedupe and split super-nodes into their parts
-  // TODO: Dependencies of nodes may still link to supernode instead of the original parts
-  return uniqBy(
-    flatMap(ends), // , (node: Supernode) => (isRegularNodeId(node.id) ? node : node.nodes)),
-    "id"
-  );
+  return uniqBy(flatMap(ends), "id");
 }
 
 function internalDFS(
@@ -379,13 +371,7 @@ function expandSupernodes(nodes: Node[]): Node[] {
     expandSingleSupernode(node as Supernode, nodes);
   }
   logger.debug(`expand supernodes subgraph ${inspect(nodes, null, 3)}`);
-  const variable = nodes.filter((n: Node | Supernode) => {
-    logger.debug(`n: ${n.id}, isRegularNodeId(n.id): ${isRegularNodeId(n.id)}`);
-    return isRegularNodeId(n.id);
-  });
-
-  logger.debug(`variable ${inspect(variable, null, 3)}`);
-  return variable;
+  return nodes.filter((n: Node | Supernode) => isRegularNodeId(n.id));
 }
 
 function expandSingleSupernode(supernode: Supernode, nodes: Node[]): void {
