@@ -152,10 +152,8 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     // Changing from NORMAL to CONFIRMED
     if (!isNormal) {
       // Mark perpetrators that called the new CONFIRMED node as victims
-      const perpetratorCallersResult = await repository.getCallersWithStatus(id, ComponentStatus.PERPETRATOR, tx);
-      // TODO
-      // const cycles = await repository.obtainChainFromPerpetrators(ids) // Chains of perpetrators means a cycle!
-      const perpetratorCallerIds = perpetratorCallersResult.records.map((r: Record) => r.get("caller")?.properties.id);
+      const perpetratorCallersResult = await repository.getPerpetratorChain(id, tx);
+      const perpetratorCallerIds = perpetratorCallersResult.records.map((r: Record) => r.get("n")?.properties.id);
       await Promise.all(
         perpetratorCallerIds.map((perpId: string) => repository.setStatus(perpId, ComponentStatus.VICTIM, tx))
       );

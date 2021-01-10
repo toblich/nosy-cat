@@ -106,13 +106,31 @@ export default class Repository {
               callee.count = 1,
               callee.status = "${STATUS.NORMAL}",
               callee:${STATUS.NORMAL}
-            ON MATCH SET
-              callee.count = callee.count + 1
         `, // TODO update metrics
         { callee, metrics },
         tx
       );
     }
+    logger.debug(`
+    MERGE (caller:Component {id: $caller})
+      ON CREATE SET
+        caller = $emptyMetrics,
+        caller.id = $caller,
+        caller.count = 1,
+        caller.status = "${STATUS.NORMAL}",
+        caller:${STATUS.NORMAL}
+    MERGE (callee:Component {id: $callee})
+      ON CREATE SET
+        callee = $metrics,
+        callee.id = $callee,
+        callee.count = 1,
+        callee.status = "${STATUS.NORMAL}",
+        callee:${STATUS.NORMAL}
+    MERGE (caller)-[r:CALLS]->(callee)
+      ON CREATE SET
+        r.callee_is = ${statusUtils.isAnomalousCypher},
+        r.callee_status = callee.status
+  `);
     return this.run(
       `
         MERGE (caller:Component {id: $caller})
@@ -129,11 +147,10 @@ export default class Repository {
             callee.count = 1,
             callee.status = "${STATUS.NORMAL}",
             callee:${STATUS.NORMAL}
-          ON MATCH SET
-            callee.count = callee.count + 1
         MERGE (caller)-[r:CALLS]->(callee)
           ON CREATE SET
-            r.callee_is = callee.status
+            r.callee_is = ${statusUtils.isAnomalousCypher},
+            r.callee_status = callee.status
       `,
       { caller, callee, metrics, emptyMetrics },
       tx
@@ -181,7 +198,7 @@ export default class Repository {
         SET x:${status}, x.status = $status${statusUtils.isAnomalous(status) ? ", x:Abnormal" : ""}
         WITH x
         MATCH ()-[r:CALLS]->(x)
-        SET r.callee_is = "${statusUtils.isAnomalous(status) ? "Abnormal" : STATUS.NORMAL}"
+        SET r.callee_status = $status, r.callee_is = "${statusUtils.isAnomalous(status) ? "Abnormal" : STATUS.NORMAL}"
       `,
       { id, status },
       tx
@@ -212,9 +229,24 @@ export default class Repository {
     );
   }
 
+  public async getPerpetratorChain(id: string, tx?: Transaction): Promise<Result> {
+    return this.run(
+      `
+      MATCH (y:Component:PERPETRATOR)-[]->(x :Component {id: $id})
+      OPTIONAL MATCH (caller:Component:PERPETRATOR)-[* {callee_status:"PERPETRATOR"}]->(y)
+      WITH collect(y)+collect(caller) as nodes
+      UNWIND nodes as n
+      RETURN n
+      `,
+      { id },
+      tx
+    );
+  }
+
   public async getCallersWithStatus(id: string, status: STATUS, tx?: Transaction): Promise<Result> {
     return this.run(
       `
+      
         MATCH (caller:Component:${status})-[]->(x :Component {id: $id})
         RETURN (caller)
       `,
