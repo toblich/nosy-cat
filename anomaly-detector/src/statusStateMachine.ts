@@ -39,7 +39,7 @@ const stateMap = {
               status: ComponentStatus.CONFIRMED,
               occurrences: 0,
             },
-      normal: (): StateResponse => ({ status: ComponentStatus.NORMAL, occurrences: 0 }),
+      normal: (): StateResponse => ({ status: ComponentStatus.HEALING, occurrences: 0 }),
     },
   },
   [ComponentStatus.CONFIRMED]: anomalousState(ComponentStatus.CONFIRMED),
@@ -47,7 +47,7 @@ const stateMap = {
   [ComponentStatus.PERPETRATOR]: anomalousState(ComponentStatus.PERPETRATOR),
   [ComponentStatus.HEALING]: {
     events: {
-      error: (): StateResponse => ({ status: ComponentStatus.CONFIRMED, occurrences: 0 }),
+      error: (): StateResponse => ({ status: ComponentStatus.SUSPICIOUS, occurrences: 0 }),
       normal: (occurrences: number): StateResponse =>
         occurrences + 1 < MAX_HEALED_COUNT
           ? {

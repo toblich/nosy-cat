@@ -56,20 +56,24 @@ logger.warn("Initializing graph!");
   await add([{ caller: "E", callee: "C", metrics }]);
   await add([{ caller: "E", callee: "F", metrics }]);
 
-  await add([{ caller: "G", callee: "H", metrics }]);
+  await add([{ caller: "J", callee: "H", metrics }]);
   // await add([{ caller: "B", callee: "A", metrics }]);
   await add([{ caller: "I", callee: "G", metrics }]);
   await add([{ caller: "G", callee: "I", metrics }]);
+  await add([{ caller: "G", callee: "J", metrics }]);
+  await add([{ caller: "I", callee: "J", metrics }]);
+  await add([{ caller: "J", callee: "G", metrics }]);
+  await add([{ caller: "J", callee: "I", metrics }]);
 
-  await add([{ caller: "J", callee: "K", metrics }]);
-  // await add([{ caller: "B", callee: "A", metrics }]);
-  await add([{ caller: "L", callee: "J", metrics }]);
-  await add([{ caller: "J", callee: "L", metrics }]);
+  // await add([{ caller: "J", callee: "K", metrics }]);
+  // // await add([{ caller: "B", callee: "A", metrics }]);
+  // await add([{ caller: "L", callee: "J", metrics }]);
+  // await add([{ caller: "J", callee: "L", metrics }]);
   // await Promise.all(Array.from("AC").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
-  await Promise.all(Array.from("GHI").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
-  // for (const n of Array.from("IG")) {
-  //   await updateComponentStatus(n, ComponentStatus.CONFIRMED);
-  // }
+  // await Promise.all(Array.from("GHI").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
+  for (const n of Array.from("JGI")) {
+    await updateComponentStatus(n, ComponentStatus.CONFIRMED);
+  }
   // logger.error("-------------------------------");
   // for (const n of Array.from("E")) {
   //   await updateComponentStatus(n, ComponentStatus.CONFIRMED);
@@ -149,6 +153,8 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     if (!isNormal) {
       // Mark perpetrators that called the new CONFIRMED node as victims
       const perpetratorCallersResult = await repository.getCallersWithStatus(id, ComponentStatus.PERPETRATOR, tx);
+      // TODO
+      // const cycles = await repository.obtainChainFromPerpetrators(ids) // Chains of perpetrators means a cycle!
       const perpetratorCallerIds = perpetratorCallersResult.records.map((r: Record) => r.get("caller")?.properties.id);
       await Promise.all(
         perpetratorCallerIds.map((perpId: string) => repository.setStatus(perpId, ComponentStatus.VICTIM, tx))
@@ -162,6 +168,7 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     // Changing from some abnormal status to NORMAL
     // Mark victims that called the new NORMAL node as perpetrators
     const victimCallersResult = await repository.getCallersWithStatus(id, ComponentStatus.VICTIM, tx);
+    // TODO mark all old victims as suspicious
     const victimCallerIds = victimCallersResult.records.map((r: Record) => r.get("caller")?.properties.id);
     const changes = await Promise.all(victimCallerIds.map((vid: string) => setNewPerpetratorsAndVictims(vid, tx)));
     // TODO calculate what changed
@@ -174,15 +181,20 @@ async function setNewPerpetratorsAndVictims(id: string, tx: Transaction): Promis
   const abnormalSubgraph = chain.length === 0 ? {} : await toEntity(id, chain, tx);
   logger.debug("ABNORMAL SUBGRAPH: " + inspect(abnormalSubgraph, false, 3));
   const ends = findEnds(id, abnormalSubgraph);
+  logger.debug("ABNORMAL SUBGRAPH AFTER FINDING ENDS (should have supernodes): " + inspect(abnormalSubgraph, false, 3));
   logger.debug("ENDS: " + inspect(ends, false, 3));
 
-  const newPerpetrators = Object.values(abnormalSubgraph).filter(
-    (x: Node) => x.status !== ComponentStatus.PERPETRATOR && ends.some((end: Node) => x.id === end.id)
+  const newPerpetrators = expandSupernodes(
+    Object.values(abnormalSubgraph).filter(
+      (x: Node) => x.status !== ComponentStatus.PERPETRATOR && ends.some((end: Node) => x.id === end.id)
+    )
   );
   logger.debug("newPerpetrators: " + inspect(newPerpetrators, false, 3));
 
-  const newVictims = Object.values(abnormalSubgraph).filter(
-    (x: Node) => x.status !== ComponentStatus.VICTIM && !ends.some((end: Node) => x.id === end.id)
+  const newVictims = expandSupernodes(
+    Object.values(abnormalSubgraph).filter(
+      (x: Node) => x.status !== ComponentStatus.VICTIM && !ends.some((end: Node) => x.id === end.id)
+    )
   );
   logger.debug("newVictims: " + inspect(newVictims, false, 3));
 
@@ -271,13 +283,13 @@ function findEnds(initialId: string, subgraph: Dictionary<Node>): Node[] {
   logger.info(`Abnormal subgraph before DFS ${inspect(subgraph, false, 3)}`);
   const ends = internalDFS(subgraph, initialId);
   logger.info(`Abnormal subgraph after DFS ${inspect(subgraph, false, 3)}`);
-  expandSupernodes(subgraph);
-  logger.info(`Abnormal subgraph after EXPANSION ${inspect(subgraph, false, 3)}`);
+  // expandSupernodes(subgraph);
+  // logger.info(`Abnormal subgraph after EXPANSION ${inspect(subgraph, false, 3)}`);
 
   // Dedupe and split super-nodes into their parts
   // TODO: Dependencies of nodes may still link to supernode instead of the original parts
   return uniqBy(
-    flatMap(ends, (node: Supernode) => (isRegularNodeId(node.id) ? node : node.nodes)),
+    flatMap(ends), // , (node: Supernode) => (isRegularNodeId(node.id) ? node : node.nodes)),
     "id"
   );
 }
@@ -356,25 +368,35 @@ function internalDFS(
   return flatMap(component.dependencies, (depId: string) => internalDFS(subgraph, depId, visited, path, component.id));
 }
 
-function expandSupernodes(subgraph: Dictionary<Node>): void {
+function expandSupernodes(nodes: Node[]): Node[] {
   // ! This does not fully rebuild the previous links, as we've lost information of the specific dependencies
   // ! inside the supernodes
-  for (const node of Object.values(subgraph)) {
+  // Shallow copy to avoid side-effects over iterating list to break the loop
+  for (const node of [...nodes]) {
     if (isRegularNodeId(node.id)) {
       continue;
     }
-    expandSingleSupernode(node as Supernode, subgraph);
+    expandSingleSupernode(node as Supernode, nodes);
   }
+  logger.debug(`expand supernodes subgraph ${inspect(nodes, null, 3)}`);
+  const variable = nodes.filter((n: Node | Supernode) => {
+    logger.debug(`n: ${n.id}, isRegularNodeId(n.id): ${isRegularNodeId(n.id)}`);
+    return isRegularNodeId(n.id);
+  });
+
+  logger.debug(`variable ${inspect(variable, null, 3)}`);
+  return variable;
 }
 
-function expandSingleSupernode(supernode: Supernode, subgraph: Dictionary<Node>): void {
+function expandSingleSupernode(supernode: Supernode, nodes: Node[]): void {
   for (const subnode of supernode.nodes) {
-    subgraph[subnode.id] = subnode;
+    logger.debug(`Splitting ${subnode.id} from ${supernode.id} and setting status ${supernode.status}`);
+    subnode.status = supernode.status; // Copy the status of the supernode into all chlid nodes
+    nodes.push(subnode);
     if (isSupernodeId(subnode.id)) {
-      expandSingleSupernode(subnode as Supernode, subgraph);
+      expandSingleSupernode(subnode as Supernode, nodes);
     }
   }
-  delete subgraph[supernode.id];
 }
 
 const SUPERNODE_PREFIX = "__supernode_cycle";
