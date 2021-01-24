@@ -33,14 +33,6 @@ export default class Repository {
     return this.driver.session(...args);
   }
 
-  // public async transact<T>(fn: (_: Transaction) => Promise<T>): Promise<T> {
-  //   logger.error(await this.driver.supportsTransactionConfig());
-  //   const session = this.session();
-  //   const result = await session.writeTransaction(fn);
-  //   await session.close();
-  //   return result;
-  // }
-
   public transaction(): Transaction {
     const session = this.session({ defaultAccessMode: neo4j.session.WRITE });
     const tx: Transaction = session.beginTransaction();
@@ -117,26 +109,6 @@ export default class Repository {
         tx
       );
     }
-    logger.debug(`
-    MERGE (caller:Component {id: $caller})
-      ON CREATE SET
-        caller = $emptyMetrics,
-        caller.id = $caller,
-        caller.count = 1,
-        caller.status = "${STATUS.NORMAL}",
-        caller:${STATUS.NORMAL}
-    MERGE (callee:Component {id: $callee})
-      ON CREATE SET
-        callee = $metrics,
-        callee.id = $callee,
-        callee.count = 1,
-        callee.status = "${STATUS.NORMAL}",
-        callee:${STATUS.NORMAL}
-    MERGE (caller)-[r:CALLS]->(callee)
-      ON CREATE SET
-        r.callee_is = ${statusUtils.isAnomalousCypher},
-        r.callee_status = callee.status
-  `);
     return this.run(
       `
         MERGE (caller:Component {id: $caller})
@@ -209,17 +181,6 @@ export default class Repository {
       { id, status },
       tx
     );
-  }
-
-  /**
-   * @param from - Id of the component on the origin of the dependency
-   * @param to - Id of the component on the end of the dependency
-   *
-   * hasComponent
-   */
-  public async hasDependency(from: string, to: string, tx?: Transaction): Promise<boolean> {
-    // const result = await this.run('MATCH (from: $from)-[:CALLS]->(to: $to)')
-    return false;
   }
 
   public async getAbnormalChain(initialId: string, tx?: Transaction): Promise<Result> {

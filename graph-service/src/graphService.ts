@@ -68,7 +68,8 @@ logger.warn("Initializing graph!");
   // await add([{ caller: "L", callee: "J", metrics }]);
   // await add([{ caller: "J", callee: "L", metrics }]);
   // await Promise.all(Array.from("AC").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
-  await Promise.all(Array.from("GHJI").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
+  await Promise.all(Array.from("ABCDEF").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
+
   // for (const n of Array.from("IJHG")) {
   //   await updateComponentStatus(n, ComponentStatus.CONFIRMED);
   // }
@@ -131,6 +132,7 @@ interface Change {
   from: { status: ComponentStatus };
   to: { status: ComponentStatus };
 }
+
 export async function updateComponentStatus(id: string, newStatus: ComponentStatus): Promise<Dictionary<Change>> {
   const isNormal = status.isNormal(newStatus);
   return transact(async (tx: Transaction) => {
