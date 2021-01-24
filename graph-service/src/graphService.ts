@@ -134,7 +134,7 @@ interface Change {
 export async function updateComponentStatus(id: string, newStatus: ComponentStatus): Promise<Dictionary<Change>> {
   const isNormal = status.isNormal(newStatus);
   return transact(async (tx: Transaction) => {
-    await repository.run("MATCH (x:VIRTUAL_NODE) SET x.flag = 1", {}, tx); // TODO move to repository?
+    await repository.acquireExclusiveLock(tx);
     const currentStatus = (await repository.getComponent(id, tx)).status;
     const wasNormal = status.isNormal(currentStatus);
     logger.debug(`Previous Status: ${currentStatus} - newStatus: ${newStatus}`);
@@ -171,8 +171,6 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     // TODO calculate what changed
     return {};
   });
-
-  // return transact(fn);
 }
 
 async function setNewPerpetratorsAndVictims(id: string, tx: Transaction): Promise<Dictionary<Change>> {

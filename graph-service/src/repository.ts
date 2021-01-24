@@ -58,7 +58,7 @@ export default class Repository {
     return tx;
   }
 
-  public async run(query: string, parameters?: any, tx?: Transaction, config?: any): Promise<Result> {
+  private async run(query: string, parameters?: any, tx?: Transaction, config?: any): Promise<Result> {
     if (tx) {
       return tx.run(query, parameters);
     }
@@ -83,6 +83,10 @@ export default class Repository {
     }
 
     return result;
+  }
+
+  public acquireExclusiveLock(tx: Transaction): Promise<Result> {
+    return this.run("MATCH (x:VIRTUAL_NODE) SET x.flag = 1", {}, tx);
   }
 
   public async addCall(
