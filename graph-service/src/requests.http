@@ -92,7 +92,7 @@ PATCH {{base}}/graph/components/status
 Content-Type: application/json
 
 {
-  "component": "D",
+  "component": "J",
   "status": "CONFIRMED"
 }
 
@@ -102,7 +102,7 @@ PATCH {{base}}/graph/components/status
 Content-Type: application/json
 
 {
-  "component": "D",
+  "component": "H",
   "status": "NORMAL"
 }
 

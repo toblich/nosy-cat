@@ -108,7 +108,7 @@ describe("graph service", () => {
 
     // Set abnormal statuses
     try {
-      await Promise.all(Array.from("ABCFGHIJKMNOXYZ_").map((id: string) => repository.setStatus(id, "Abnormal")));
+      await Promise.all(Array.from("ABCFGHIJKMNOXYZ_").map((id: string) => repository.setStatus(id, "CONFIRMED")));
     } catch (error) {
       throw Error(`There was an error while setting the abnormal statuses, ${error.stack}`);
     }
@@ -116,7 +116,7 @@ describe("graph service", () => {
 
   // Test root causes search
 
-  const cases: Array<[string, Test]> = [
+  const cases: [string, Test][] = [
     ["A", "Causal chain", "ABCGHIJKNO"],
     ["B", "Causal chain", "BCGHIJKNO"],
     ["C", "Causal chain", "BCGHIJKNO"],
