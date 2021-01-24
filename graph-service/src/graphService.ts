@@ -169,10 +169,10 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
         })),
       ];
       const mergedChanges: Dictionary<Change> = merge(newChanges);
-      return filter(mergedChanges, (change: Change) => {
-        logger.debug(inspect(change));
-        return Object.values(change)[0].from.status !== Object.values(change)[0].to.status;
-      });
+      return filter(
+        mergedChanges,
+        (change: Change) => Object.values(change)[0].from.status !== Object.values(change)[0].to.status
+      );
     }
 
     // Changing from some abnormal status to NORMAL
