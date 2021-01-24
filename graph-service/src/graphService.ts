@@ -160,17 +160,14 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
         perpetratorCallerIds.map((perpId: string) => repository.setStatus(perpId, ComponentStatus.VICTIM, tx))
       );
 
-      // Analyze the chain beginning from the new CONFIRMED to determine perpetrators and victims
-      // TODO dedupe changes from what changed in the perpIds step
       const newChanges: Dictionary<Change>[] = [
-        await setNewPerpetratorsAndVictims(id, tx),
+        await setNewPerpetratorsAndVictims(id, tx), // Analyze the chain beginning from the new CONFIRMED to determine perpetrators and victims
         ...perpetratorCallerIds.map((perp: string) => ({
           [perp]: { id: perp, from: { status: ComponentStatus.PERPETRATOR }, to: { status: ComponentStatus.VICTIM } },
         })),
       ];
-      const mergedChanges: Dictionary<Change> = merge(newChanges);
       return filter(
-        mergedChanges,
+        merge(newChanges),
         (change: Change) => Object.values(change)[0].from.status !== Object.values(change)[0].to.status
       );
     }
@@ -181,11 +178,13 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     // TODO mark all old victims as suspicious
     const victimCallerIds = victimCallersResult.records.map((r: Record) => r.get("caller")?.properties.id);
     const changes = await Promise.all(victimCallerIds.map((vid: string) => setNewPerpetratorsAndVictims(vid, tx)));
-    // ! TODO calculate what changed
     const initialNodeChange: Dictionary<Change> = {
       [id]: { id, to: { status: newStatus }, from: { status: currentStatus } },
     };
-    return merge(changes.concat(initialNodeChange));
+    return filter(
+      merge(changes.concat(initialNodeChange)),
+      (change: Change) => Object.values(change)[0].from.status !== Object.values(change)[0].to.status
+    );
   });
 }
 
