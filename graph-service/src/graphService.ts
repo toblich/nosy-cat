@@ -34,8 +34,6 @@ export interface Node {
 //////////////////////////
 // --- Initialization ---
 //////////////////////////
-// TODO
-// ! When adding a CONFIRMED node below a PERPETRATOR SUPERNODE, we're not correctly processing the supernode.
 // Example: G <-> I -> H
 // When CONFIMING H after all others were confirmed, only I is changed to VICTIM (but both G&I should change as they're
 // part of the same supernode)
@@ -70,10 +68,10 @@ logger.warn("Initializing graph!");
   // await add([{ caller: "L", callee: "J", metrics }]);
   // await add([{ caller: "J", callee: "L", metrics }]);
   // await Promise.all(Array.from("AC").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
-  // await Promise.all(Array.from("GHI").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
-  for (const n of Array.from("GIJH")) {
-    await updateComponentStatus(n, ComponentStatus.CONFIRMED);
-  }
+  await Promise.all(Array.from("GHJI").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
+  // for (const n of Array.from("IJHG")) {
+  //   await updateComponentStatus(n, ComponentStatus.CONFIRMED);
+  // }
   // logger.error("-------------------------------");
   // for (const n of Array.from("E")) {
   //   await updateComponentStatus(n, ComponentStatus.CONFIRMED);
@@ -136,7 +134,8 @@ interface Change {
 export async function updateComponentStatus(id: string, newStatus: ComponentStatus): Promise<Dictionary<Change>> {
   const isNormal = status.isNormal(newStatus);
   return transact(async (tx: Transaction) => {
-    const currentStatus = (await repository.getComponent(id)).status;
+    await repository.run("MATCH (x:VIRTUAL_NODE) SET x.flag = 1", {}, tx); // TODO move to repository?
+    const currentStatus = (await repository.getComponent(id, tx)).status;
     const wasNormal = status.isNormal(currentStatus);
     logger.debug(`Previous Status: ${currentStatus} - newStatus: ${newStatus}`);
     if (wasNormal === isNormal) {
@@ -172,6 +171,8 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     // TODO calculate what changed
     return {};
   });
+
+  // return transact(fn);
 }
 
 async function setNewPerpetratorsAndVictims(id: string, tx: Transaction): Promise<Dictionary<Change>> {

@@ -10,6 +10,7 @@ export type Transaction = neo4j.Transaction & { debugId?: number };
 
 export default class Repository {
   private driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"));
+  private static VIRTUAL_NODE = "VIRTUAL_NODE";
 
   public constructor() {
     this.initialize();
@@ -25,6 +26,7 @@ export default class Repository {
         throw error;
       }
     }
+    await this.run(`MERGE (x:${Repository.VIRTUAL_NODE}) ON CREATE SET x.flag = 0`);
   }
 
   private session(...args: any): neo4j.Session {
@@ -56,7 +58,7 @@ export default class Repository {
     return tx;
   }
 
-  private async run(query: string, parameters?: any, tx?: Transaction, config?: any): Promise<Result> {
+  public async run(query: string, parameters?: any, tx?: Transaction, config?: any): Promise<Result> {
     if (tx) {
       return tx.run(query, parameters);
     }
@@ -280,7 +282,7 @@ export default class Repository {
 
   public async clear(): Promise<void> {
     logger.warn("Clearing the entire graph (delete everything!");
-    await this.run(`MATCH (x) DETACH DELETE x`);
+    await this.run(`MATCH (x:Component) DETACH DELETE x`);
     await this.initialize();
     return;
   }
