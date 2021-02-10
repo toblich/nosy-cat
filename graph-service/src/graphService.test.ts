@@ -173,7 +173,7 @@ describe("new tests", () => {
     }
   });
 
-  describe("single node case", () => {
+  describe("single node", () => {
     initialize({ A: [] });
     test("A", NORMAL, {});
     test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
@@ -181,7 +181,7 @@ describe("new tests", () => {
     test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
   });
 
-  describe("single call case", () => {
+  describe("single call", () => {
     const graph = Object.freeze({ A: ["B"] });
 
     describe("applying changes only to A", () => {
@@ -214,32 +214,79 @@ describe("new tests", () => {
     });
   });
 
+  describe("two-node cycle", () => {
+    const graph = Object.freeze({ A: ["B"], B: ["A"] });
+
+    describe("applying changes only to one node", () => {
+      initialize(graph);
+      test("A", NORMAL, {});
+      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+      test("A", CONFIRMED, {});
+      test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+    });
+
+    describe("applying changes to both", () => {
+      initialize(graph, true);
+      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+
+      // it("test", async () => {
+      //   console.log(JSON.stringify(await graphService.search('A')));
+      //   console.log(JSON.stringify(await graphService.search('B')));
+      //   console.log(
+      //     "---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
+      //   );
+      // });
+
+      test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR), true); // TODO the change should be from "Normal" to "Perp"
+      // it("test", async () => {
+      //   console.log(JSON.stringify(await graphService.search('A')));
+      //   console.log(JSON.stringify(await graphService.search('B')));
+      // });
+      // both CONFIRMED now
+
+      test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
+      test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+    });
+  });
+
   // ---
 
-  function initialize(graph: Dictionary<string[]>): void {
+  function initialize(graph: Dictionary<string[]>, debug?: boolean): void {
     _testCounter = 0;
-    beforeAll(() => setGraph(graph));
-  }
-
-  async function setGraph(graph: Dictionary<string[]>): Promise<void> {
-    await graphService.clear();
-    const componentCalls = Object.entries(graph).flatMap(([caller, callees]: [string, string[]]) => {
-      return !callees || callees.length === 0
-        ? { callee: caller, metrics: defaultTestMetrics }
-        : callees.map((callee: string) => ({ caller, callee, metrics: defaultTestMetrics }));
+    beforeAll(async () => {
+      await graphService.clear();
+      const componentCalls = Object.entries(graph).flatMap(([caller, callees]: [string, string[]]) => {
+        return !callees || callees.length === 0
+          ? { callee: caller, metrics: defaultTestMetrics }
+          : callees.map((callee: string) => ({ caller, callee, metrics: defaultTestMetrics }));
+      });
+      try {
+        // if (debug) {
+        //   console.log("ComponentCalls", JSON.stringify(componentCalls, null, 4));
+        // }
+        await graphService.add([...componentCalls]);
+      } catch (error) {
+        throw Error(`There was an error while adding the component calls, ${error.stack}`);
+      }
     });
-    try {
-      await graphService.add([...componentCalls]);
-    } catch (error) {
-      throw Error(`There was an error while adding the component calls, ${error.stack}`);
-    }
   }
 
-  function test(id: string, status: ComponentStatus, expectedChanges: any): void {
+  function test(
+    id: string,
+    status: ComponentStatus,
+    expectedChanges: Dictionary<graphService.Change>,
+    debug?: boolean
+  ): void {
     describe(`[${++_testCounter}] and ${id} becomes ${status}`, () => {
       let changes;
       beforeAll(async () => (changes = await graphService.updateComponentStatus(id, status)));
-      it(`should return the expected changes`, () => expect(changes).toEqual(expectedChanges));
+      it(`should return the expected changes`, () => {
+        // if (debug) {
+        //   console.log('received:', JSON.stringify(changes), null, 4);
+        //   console.log('expected:', JSON.stringify(expectedChanges), null, 4);
+        // }
+        expect(changes).toEqual(expectedChanges);
+      });
     });
   }
 

@@ -166,6 +166,10 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
           [perp]: { id: perp, from: { status: ComponentStatus.PERPETRATOR }, to: { status: ComponentStatus.VICTIM } },
         })),
       ];
+
+      // ! TODO bug here. We need to merge & dedupe interim changes. For example, we might initially change something
+      // from PERP to VICTIM, but upon finding a cycle we re-change it to PERP. This should not show up in the final
+      // returned changes, as it was just an internal interim change.
       return pickBy(merge({}, ...newChanges), (change: Change) => change.from.status !== change.to.status);
     }
 
@@ -178,6 +182,8 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     const initialNodeChange: Dictionary<Change> = {
       [id]: { id, to: { status: newStatus }, from: { status: currentStatus } },
     };
+
+    // ! TODO bug same here
     return pickBy(
       merge({}, ...changes, initialNodeChange),
       (change: Change) => change.from.status !== change.to.status
