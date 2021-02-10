@@ -1,7 +1,7 @@
 import * as graphService from "./graphService";
-import Repository, { Result, Record, Transaction } from "./repository";
 import { ComponentStatus, ComponentCall, Dictionary } from "helpers";
 import * as neo4j from "neo4j-driver";
+import { merge } from "lodash";
 
 // [
 //   "AB",
@@ -158,32 +158,71 @@ const defaultTestMetrics = Object.freeze({
   timestamp: Date.now(),
 });
 
-describe("new tests", () => {
-  const repository = new Repository();
+const { CONFIRMED, PERPETRATOR, VICTIM, NORMAL } = ComponentStatus;
 
+let _testCounter = 0; // This is just a hack so that Jest report does not bundle together things that shouldn't
+
+describe("new tests", () => {
   beforeAll(async () => {
     await availableDb();
 
     try {
-      await repository.clear();
+      await graphService.clear();
     } catch (error) {
       throw Error("There was an error while clearing the DB");
     }
   });
 
   describe("single node case", () => {
-    beforeAll(async () => await setGraph({ A: [] }));
+    initialize({ A: [] });
+    test("A", NORMAL, {});
+    test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+    test("A", CONFIRMED, {});
+    test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+  });
 
-    test("A", ComponentStatus.NORMAL, {});
-    test("A", ComponentStatus.CONFIRMED, change("A", "CONFIRMED", "PERPETRATOR")); // TODO the change should be from "Normal" to "Perp"
-    test("A", ComponentStatus.CONFIRMED, {});
-    test("A", ComponentStatus.NORMAL, change("A", "PERPETRATOR", "NORMAL"));
+  describe("single call case", () => {
+    const graph = Object.freeze({ A: ["B"] });
+
+    describe("applying changes only to A", () => {
+      initialize(graph);
+      test("A", NORMAL, {});
+      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+      test("A", CONFIRMED, {});
+      test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+    });
+
+    describe("applying changes only to B", () => {
+      initialize(graph);
+      test("B", NORMAL, {});
+      test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+      test("B", CONFIRMED, {});
+      test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
+    });
+
+    describe("applying changes to both", () => {
+      initialize(graph);
+      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+      test("B", CONFIRMED, merge(change("B", CONFIRMED, PERPETRATOR), change("A", PERPETRATOR, VICTIM))); // TODO the change should be from "Normal" to "Perp"
+      // both CONFIRMED now
+
+      test("B", NORMAL, merge(change("B", PERPETRATOR, NORMAL), change("A", VICTIM, PERPETRATOR)));
+      test("B", CONFIRMED, merge(change("B", CONFIRMED, PERPETRATOR), change("A", PERPETRATOR, VICTIM))); // TODO the change should be from "Normal" to "Perp"
+      // both CONFIRMED now
+
+      test("A", NORMAL, change("A", VICTIM, NORMAL));
+    });
   });
 
   // ---
 
+  function initialize(graph: Dictionary<string[]>): void {
+    _testCounter = 0;
+    beforeAll(() => setGraph(graph));
+  }
+
   async function setGraph(graph: Dictionary<string[]>): Promise<void> {
-    await repository.clear();
+    await graphService.clear();
     const componentCalls = Object.entries(graph).flatMap(([caller, callees]: [string, string[]]) => {
       return !callees || callees.length === 0
         ? { callee: caller, metrics: defaultTestMetrics }
@@ -197,10 +236,10 @@ describe("new tests", () => {
   }
 
   function test(id: string, status: ComponentStatus, expectedChanges: any): void {
-    describe(`and ${id} becomes ${status}`, () => {
+    describe(`[${++_testCounter}] and ${id} becomes ${status}`, () => {
       let changes;
       beforeAll(async () => (changes = await graphService.updateComponentStatus(id, status)));
-      it("should return the expected changes", () => expect(changes).toEqual(expectedChanges));
+      it(`should return the expected changes`, () => expect(changes).toEqual(expectedChanges));
     });
   }
 

@@ -64,7 +64,9 @@ export default class Repository {
     } catch (e) {
       failed = true;
       result = e;
-      logger.error(e);
+      if ((e as neo4j.Neo4jError).code !== "Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists") {
+        logger.error(e);
+      }
       throw e;
     } finally {
       await session.close();
@@ -144,7 +146,7 @@ export default class Repository {
     // TODO this is not fully a Component
     const result = await this.run(
       `MATCH (component:Component {id: $id})
-      OPTIONAL MATCH (component)-[]->(v:Component) 
+      OPTIONAL MATCH (component)-[]->(v:Component)
       RETURN component, v`,
       { id },
       tx
@@ -213,7 +215,7 @@ export default class Repository {
   public async getCallersWithStatus(id: string, status: STATUS, tx?: Transaction): Promise<Result> {
     return this.run(
       `
-      
+
         MATCH (caller:Component:${status})-[]->(x :Component {id: $id})
         RETURN (caller)
       `,
