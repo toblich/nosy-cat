@@ -1,7 +1,7 @@
 import { inspect } from "util";
 import * as httpErrors from "http-errors";
 
-import { keyBy, flatMap, takeRightWhile, uniqBy, dropRight, endsWith, flatten, merge, filter } from "lodash";
+import { keyBy, flatMap, takeRightWhile, uniqBy, dropRight, endsWith, flatten, merge, filter, pickBy } from "lodash";
 
 import {
   Component as HelperComponent,
@@ -40,45 +40,45 @@ export interface Node {
 
 const repository = new Repository();
 
-logger.warn("Initializing graph!");
-(async () => {
-  // TODO This is just for debugging
-  await clear();
-  const metrics = { duration: 1, errored: true, timestamp: Date.now() };
-  await add([{ caller: "A", callee: "B", metrics }]);
-  // await add([{ caller: "B", callee: "A", metrics }]);
-  await add([{ caller: "C", callee: "D", metrics }]);
-  await add([{ caller: "C", callee: "A", metrics }]);
-  await add([{ caller: "A", callee: "C", metrics }]);
-  await add([{ caller: "C", callee: "E", metrics }]);
-  await add([{ caller: "E", callee: "C", metrics }]);
-  await add([{ caller: "E", callee: "F", metrics }]);
+// logger.warn("Initializing graph!");
+// (async () => {
+//   // TODO This is just for debugging
+//   await clear();
+//   const metrics = { duration: 1, errored: true, timestamp: Date.now() };
+//   await add([{ caller: "A", callee: "B", metrics }]);
+//   // await add([{ caller: "B", callee: "A", metrics }]);
+//   await add([{ caller: "C", callee: "D", metrics }]);
+//   await add([{ caller: "C", callee: "A", metrics }]);
+//   await add([{ caller: "A", callee: "C", metrics }]);
+//   await add([{ caller: "C", callee: "E", metrics }]);
+//   await add([{ caller: "E", callee: "C", metrics }]);
+//   await add([{ caller: "E", callee: "F", metrics }]);
 
-  await add([{ caller: "J", callee: "H", metrics }]);
-  // await add([{ caller: "B", callee: "A", metrics }]);
-  await add([{ caller: "I", callee: "G", metrics }]);
-  await add([{ caller: "G", callee: "I", metrics }]);
-  await add([{ caller: "G", callee: "J", metrics }]);
-  await add([{ caller: "I", callee: "J", metrics }]);
-  await add([{ caller: "J", callee: "G", metrics }]);
-  await add([{ caller: "J", callee: "I", metrics }]);
+//   await add([{ caller: "J", callee: "H", metrics }]);
+//   // await add([{ caller: "B", callee: "A", metrics }]);
+//   await add([{ caller: "I", callee: "G", metrics }]);
+//   await add([{ caller: "G", callee: "I", metrics }]);
+//   await add([{ caller: "G", callee: "J", metrics }]);
+//   await add([{ caller: "I", callee: "J", metrics }]);
+//   await add([{ caller: "J", callee: "G", metrics }]);
+//   await add([{ caller: "J", callee: "I", metrics }]);
 
-  // await add([{ caller: "J", callee: "K", metrics }]);
-  // // await add([{ caller: "B", callee: "A", metrics }]);
-  // await add([{ caller: "L", callee: "J", metrics }]);
-  // await add([{ caller: "J", callee: "L", metrics }]);
-  // await Promise.all(Array.from("AC").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
-  await Promise.all(Array.from("ABCDEF").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
-  await Promise.all(Array.from("IJHG").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
+//   // await add([{ caller: "J", callee: "K", metrics }]);
+//   // // await add([{ caller: "B", callee: "A", metrics }]);
+//   // await add([{ caller: "L", callee: "J", metrics }]);
+//   // await add([{ caller: "J", callee: "L", metrics }]);
+//   // await Promise.all(Array.from("AC").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
+//   await Promise.all(Array.from("ABCDEF").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
+//   await Promise.all(Array.from("IJHG").map((n: string) => updateComponentStatus(n, ComponentStatus.CONFIRMED)));
 
-  // for (const n of Array.from("IJHG")) {
-  //   await updateComponentStatus(n, ComponentStatus.CONFIRMED);
-  // }
-  // logger.error("-------------------------------");
-  // for (const n of Array.from("E")) {
-  //   await updateComponentStatus(n, ComponentStatus.CONFIRMED);
-  // }
-})();
+//   // for (const n of Array.from("IJHG")) {
+//   //   await updateComponentStatus(n, ComponentStatus.CONFIRMED);
+//   // }
+//   // logger.error("-------------------------------");
+//   // for (const n of Array.from("E")) {
+//   //   await updateComponentStatus(n, ComponentStatus.CONFIRMED);
+//   // }
+// })();
 // logger.debug("Finding causal chain for XAPI");
 // findCausalChain("xapi");
 
@@ -128,7 +128,7 @@ export async function findRootCauses(initialId: string): Promise<Node[]> {
   return findEnds(initialId, abnormalSubgraph);
 }
 
-interface Change {
+export interface Change {
   id: string;
   from: { status: ComponentStatus };
   to: { status: ComponentStatus };
@@ -166,10 +166,7 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
           [perp]: { id: perp, from: { status: ComponentStatus.PERPETRATOR }, to: { status: ComponentStatus.VICTIM } },
         })),
       ];
-      return filter(
-        merge(newChanges),
-        (change: Change) => Object.values(change)[0].from.status !== Object.values(change)[0].to.status
-      );
+      return pickBy(merge({}, ...newChanges), (change: Change) => change.from.status !== change.to.status);
     }
 
     // Changing from some abnormal status to NORMAL
@@ -181,9 +178,9 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     const initialNodeChange: Dictionary<Change> = {
       [id]: { id, to: { status: newStatus }, from: { status: currentStatus } },
     };
-    return filter(
-      merge(changes.concat(initialNodeChange)),
-      (change: Change) => Object.values(change)[0].from.status !== Object.values(change)[0].to.status
+    return pickBy(
+      merge({}, ...changes, initialNodeChange),
+      (change: Change) => change.from.status !== change.to.status
     );
   });
 }

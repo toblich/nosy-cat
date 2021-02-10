@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es6",
+    "target": "es2019",
     "diagnostics": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
@@ -13,7 +13,7 @@
       "config": ["./config/default.ts"]
     },
     "baseUrl": "./",
-    "lib": ["es6", "es2015.promise", "es2015", "dom"],
+    "lib": ["es6", "es2015.promise", "es2015", "es2019"],
     "typeRoots": ["node_modules/@types", "./types/"]
   },
   "exclude": ["node_modules"],
