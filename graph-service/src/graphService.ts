@@ -1,7 +1,7 @@
 import { inspect } from "util";
 import * as httpErrors from "http-errors";
 
-import { keyBy, flatMap, takeRightWhile, uniqBy, dropRight, endsWith, flatten, merge, filter, pickBy } from "lodash";
+import { keyBy, flatMap, takeRightWhile, uniqBy, pickBy } from "lodash";
 
 import {
   Component as HelperComponent,
@@ -160,38 +160,52 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
         perpetratorCallerIds.map((perpId: string) => repository.setStatus(perpId, ComponentStatus.VICTIM, tx))
       );
 
-      const newChanges: Dictionary<Change>[] = [
-        await setNewPerpetratorsAndVictims(id, tx), // Analyze the chain beginning from the new CONFIRMED to determine perpetrators and victims
-        ...perpetratorCallerIds.map((perp: string) => ({
-          [perp]: { id: perp, from: { status: ComponentStatus.PERPETRATOR }, to: { status: ComponentStatus.VICTIM } },
-        })),
-      ];
+      const newChanges: Change[] = perpetratorCallerIds
+        .map((perp: string) => ({
+          id: perp,
+          from: { status: ComponentStatus.PERPETRATOR },
+          to: { status: ComponentStatus.VICTIM },
+        }))
+        .concat(
+          await setNewPerpetratorsAndVictims(id, tx) // Analyze the chain beginning from the new CONFIRMED to determine perpetrators and victims
+        );
 
-      // ! TODO bug here. We need to merge & dedupe interim changes. For example, we might initially change something
-      // from PERP to VICTIM, but upon finding a cycle we re-change it to PERP. This should not show up in the final
-      // returned changes, as it was just an internal interim change.
-      return pickBy(merge({}, ...newChanges), (change: Change) => change.from.status !== change.to.status);
+      return toMergedChangeDict(newChanges);
     }
 
     // Changing from some abnormal status to NORMAL
     // Mark victims that called the new NORMAL node as perpetrators
     const victimCallersResult = await repository.getCallersWithStatus(id, ComponentStatus.VICTIM, tx);
     // TODO mark all old victims as suspicious
-    const victimCallerIds = victimCallersResult.records.map((r: Record) => r.get("caller")?.properties.id);
-    const changes = await Promise.all(victimCallerIds.map((vid: string) => setNewPerpetratorsAndVictims(vid, tx)));
-    const initialNodeChange: Dictionary<Change> = {
-      [id]: { id, to: { status: newStatus }, from: { status: currentStatus } },
-    };
+    const victimCallerIds: string[] = victimCallersResult.records.map((r: Record) => r.get("caller")?.properties.id);
+    const changes: Change[] = (
+      await Promise.all(victimCallerIds.map((vid: string) => setNewPerpetratorsAndVictims(vid, tx)))
+    ).flat();
+    const initialNodeChange: Change = { id, to: { status: newStatus }, from: { status: currentStatus } };
 
-    // ! TODO bug same here
-    return pickBy(
-      merge({}, ...changes, initialNodeChange),
-      (change: Change) => change.from.status !== change.to.status
-    );
+    return toMergedChangeDict([initialNodeChange, ...changes]);
   });
 }
 
-async function setNewPerpetratorsAndVictims(id: string, tx: Transaction): Promise<Dictionary<Change>> {
+function toMergedChangeDict(changes: Change[]): Dictionary<Change> {
+  const mergedChanges = changes.reduce((accum: Dictionary<Change>, change: Change) => {
+    const original = accum[change.id];
+    // If there are two changes applied to the same node, merge them.
+    accum[change.id] = !original
+      ? change
+      : {
+          id: change.id,
+          from: original.from,
+          to: change.to,
+        };
+    return accum;
+  }, {});
+
+  // Filter out changes that (after merging perhaps) became idempotent, so not a real change
+  return pickBy(mergedChanges, (change: Change) => change.from.status !== change.to.status);
+}
+
+async function setNewPerpetratorsAndVictims(id: string, tx: Transaction): Promise<Change[]> {
   const chain = await findCausalChain(id, tx);
   const abnormalSubgraph: Dictionary<Node> = chain.length === 0 ? {} : await toEntity(id, chain, tx);
   logger.debug("ABNORMAL SUBGRAPH: " + inspect(abnormalSubgraph, false, 3));
@@ -217,10 +231,7 @@ async function setNewPerpetratorsAndVictims(id: string, tx: Transaction): Promis
     updateStatuses(newVictims, ComponentStatus.VICTIM, tx),
   ]);
 
-  const changes = asChanges(newPerpetrators, ComponentStatus.PERPETRATOR).concat(
-    asChanges(newVictims, ComponentStatus.VICTIM)
-  );
-  return keyBy(changes, "id");
+  return asChanges(newPerpetrators, ComponentStatus.PERPETRATOR).concat(asChanges(newVictims, ComponentStatus.VICTIM));
 }
 
 function updateStatuses(nodes: Node[], newStatus: ComponentStatus, tx?: Transaction): Promise<Result[]> {
