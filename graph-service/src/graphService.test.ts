@@ -2,6 +2,7 @@ import * as graphService from "./graphService";
 import { ComponentStatus, ComponentCall, Dictionary } from "helpers";
 import * as neo4j from "neo4j-driver";
 import { merge } from "lodash";
+import { inspect } from "util";
 
 // [
 //   "AB",
@@ -290,6 +291,19 @@ describe("new tests", () => {
       // Test 3.9.d
       test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
     });
+
+    // Case 3.14
+    describe("single big loop (~ A <- B <- C <~)", () => {
+      initialize({ A: ["C"], B: ["A"], C: ["B"] });
+      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+      test("B", CONFIRMED, change("B", CONFIRMED, VICTIM)); // TODO confirmed ~ normal
+
+      // Test 3.14.a
+      test("C", CONFIRMED, merge(change("B", VICTIM, PERPETRATOR), change("C", CONFIRMED, PERPETRATOR))); // TODO confirmed ~ normal
+
+      // Test 3.14.b
+      test("C", NORMAL, merge(change("B", PERPETRATOR, VICTIM), change("C", PERPETRATOR, NORMAL)), true);
+    });
   });
 
   // ---
@@ -325,8 +339,8 @@ describe("new tests", () => {
       beforeAll(async () => (changes = await graphService.updateComponentStatus(id, status)));
       it(`should return the expected changes`, () => {
         // if (debug) {
-        //   console.log('received:', JSON.stringify(changes), null, 4);
-        //   console.log('expected:', JSON.stringify(expectedChanges), null, 4);
+        //   console.log('received:', JSON.stringify(changes, null, 4));
+        //   console.log('expected:', JSON.stringify(expectedChanges, null, 4));
         // }
         expect(changes).toEqual(expectedChanges);
       });

@@ -178,8 +178,16 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     const victimCallersResult = await repository.getCallersWithStatus(id, ComponentStatus.VICTIM, tx);
     // TODO mark all old victims as suspicious
     const victimCallerIds: string[] = victimCallersResult.records.map((r: Record) => r.get("caller")?.properties.id);
+
+    // For cases with cycles, perps might be calling the used-to-be-perp node too
+    const perpCallersResult = await repository.getPerpetratorChain(id, tx);
+    // TODO mark all old victims as suspicious
+    const perpCallerIds: string[] = perpCallersResult.records.map((r: Record) => r.get("n")?.properties.id);
+
     const changes: Change[] = (
-      await Promise.all(victimCallerIds.map((vid: string) => setNewPerpetratorsAndVictims(vid, tx)))
+      await Promise.all(
+        victimCallerIds.concat(perpCallerIds).map((vid: string) => setNewPerpetratorsAndVictims(vid, tx))
+      )
     ).flat();
     const initialNodeChange: Change = { id, to: { status: newStatus }, from: { status: currentStatus } };
 
@@ -430,6 +438,10 @@ function toSupernodeId(ids: string[]): string {
   return [SUPERNODE_PREFIX, ...ids].join(SUPERNODE_SEPARATOR);
 }
 
-export async function getFullGraph(): Promise<Result> {
-  return repository.getFullGraph();
+export async function getFullGraph(): Promise<any> {
+  const resultNodeIds: string[] = (await repository.getFullGraph()).records.map(
+    (r: any) => r.get("resultNode")?.properties.id
+  );
+  const components = await Promise.all(resultNodeIds.map((id: string) => repository.getComponent(id)));
+  return keyBy(components, "id");
 }

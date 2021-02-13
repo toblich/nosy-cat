@@ -157,7 +157,7 @@ export default class Repository {
     // const component = new Component(result)
     logger.warn("COMPONENT " + inspect(result.records[0].get("component")));
     const node: neo4j.Node = result.records[0].get("component");
-    const dependencies = result.records.map((x: neo4j.Record) => x.get("v")?.properties?.id).filter((s: string) => s);
+    const dependencies = result.records.map((x: neo4j.Record) => x.get("v")?.properties.id).filter((s: string) => s);
 
     const props: any = node.properties; // TODO this is a negrada
     return new Component(props.id, new Set(dependencies), new Set(), props.status);
