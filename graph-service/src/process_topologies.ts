@@ -79,7 +79,5 @@ async function initialize(graph: { [s: string]: unknown } | ArrayLike<unknown>) 
   }
 }
 
-// tslint:disable-next-line:typedef
-Promise.all(linesToProcess.map(processLine)).then((resultingLines) => {
-  fs.writeFileSync("topologies_visualization.json", inspect(resultingLines, false, 4).replace(/'/g, '"'));
-});
+// tslint:disable-next-line:no-console typedef
+Promise.all(linesToProcess.map(processLine)).then((resultingLines) => console.log("DONE"));
