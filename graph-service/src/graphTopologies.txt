@@ -82,9 +82,9 @@ N nodes:
     tests:
     a) P , P , ... , P , N => V , V , ... , V , P
     b) V , V , ... , V , P => P , P , ... , P , N
-    c) V , V , ... , V , P => N , V , P , ... , P
-    d) N , V , P , ... , P => V , V , ... , V , P
-6) Anillo dentro de anillo
+    c) V , V , ... , V , P => N , V , ... , V , P , P
+    d) N , V , ... , V , P , P => V , V , ... , V , P
+3) Anillo dentro de anillo
     A -> B -> C -> D -> E -> F -> G -> A ; E -> H -> I -> J -> B
     tests:
     a)  A B C D E F G H I J => A B C D E F G H I J
@@ -92,10 +92,10 @@ N nodes:
     b)  A B C D E F G H I J => A B C D E F G H I J
         P P P P P P P P P P => P P P P P P P N V V
     c)  A B C D E F G H I J => A B C D E F G H I J
-        P N V V V V V V V P => P P P P P P P P P P
-    d)  A B C D E F G H I J => A B C D E F G H I J
         P P P P P P P P P P => P N V V V V V V V P
-    c)  A B C D E F G H I J => A B C D E F G H I J
-        V V P N V V V V V V => P P P P P P P P P P
     d)  A B C D E F G H I J => A B C D E F G H I J
+        P N V V V V V V V P => P P P P P P P P P P
+    e)  A B C D E F G H I J => A B C D E F G H I J
         P P P P P P P P P P => V V P N V V V V V V
+    f)  A B C D E F G H I J => A B C D E F G H I J
+        V V P N V V V V V V => P P P P P P P P P P
