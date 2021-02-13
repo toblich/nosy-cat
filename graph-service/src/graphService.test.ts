@@ -173,7 +173,7 @@ describe("new tests", () => {
     }
   });
 
-  describe("single node", () => {
+  describe("single-node graph (A)", () => {
     initialize({ A: [] });
     test("A", NORMAL, {});
     test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
@@ -181,71 +181,114 @@ describe("new tests", () => {
     test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
   });
 
-  describe("single call", () => {
-    const graph = Object.freeze({ A: ["B"] });
+  describe("two-node graph", () => {
+    describe("single call (A -> B)", () => {
+      const graph = Object.freeze({ A: ["B"] });
 
-    describe("applying changes only to A", () => {
-      initialize(graph);
-      test("A", NORMAL, {});
-      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
-      test("A", CONFIRMED, {});
-      test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+      describe("applying changes only to A", () => {
+        initialize(graph);
+        test("A", NORMAL, {});
+        test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+        test("A", CONFIRMED, {});
+        test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+      });
+
+      describe("applying changes only to B", () => {
+        initialize(graph);
+        test("B", NORMAL, {});
+        test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+        test("B", CONFIRMED, {});
+        test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
+      });
+
+      describe("applying changes to both", () => {
+        initialize(graph);
+        test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+        test("B", CONFIRMED, merge(change("B", CONFIRMED, PERPETRATOR), change("A", PERPETRATOR, VICTIM))); // TODO the change should be from "Normal" to "Perp"
+        // both CONFIRMED now
+
+        test("B", NORMAL, merge(change("B", PERPETRATOR, NORMAL), change("A", VICTIM, PERPETRATOR)));
+        test("B", CONFIRMED, merge(change("B", CONFIRMED, PERPETRATOR), change("A", PERPETRATOR, VICTIM))); // TODO the change should be from "Normal" to "Perp"
+        // both CONFIRMED now
+
+        test("A", NORMAL, change("A", VICTIM, NORMAL));
+      });
     });
 
-    describe("applying changes only to B", () => {
-      initialize(graph);
-      test("B", NORMAL, {});
-      test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
-      test("B", CONFIRMED, {});
-      test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
-    });
+    describe("two-node cycle (A <-> B)", () => {
+      const graph = Object.freeze({ A: ["B"], B: ["A"] });
 
-    describe("applying changes to both", () => {
-      initialize(graph);
-      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
-      test("B", CONFIRMED, merge(change("B", CONFIRMED, PERPETRATOR), change("A", PERPETRATOR, VICTIM))); // TODO the change should be from "Normal" to "Perp"
-      // both CONFIRMED now
+      describe("applying changes only to one node", () => {
+        initialize(graph);
+        test("A", NORMAL, {});
+        test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+        test("A", CONFIRMED, {});
+        test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+      });
 
-      test("B", NORMAL, merge(change("B", PERPETRATOR, NORMAL), change("A", VICTIM, PERPETRATOR)));
-      test("B", CONFIRMED, merge(change("B", CONFIRMED, PERPETRATOR), change("A", PERPETRATOR, VICTIM))); // TODO the change should be from "Normal" to "Perp"
-      // both CONFIRMED now
+      describe("applying changes to both", () => {
+        initialize(graph, true);
+        test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+        test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR), true); // TODO the change should be from "Normal" to "Perp"
+        // both CONFIRMED now
 
-      test("A", NORMAL, change("A", VICTIM, NORMAL));
+        test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
+        test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+      });
     });
   });
 
-  describe("two-node cycle", () => {
-    const graph = Object.freeze({ A: ["B"], B: ["A"] });
+  describe("three-node graph", () => {
+    // Case 3.1
+    describe("chain (A -> B -> C)", () => {
+      initialize({ A: ["B"], B: ["C"], C: [] });
 
-    describe("applying changes only to one node", () => {
-      initialize(graph);
-      test("A", NORMAL, {});
-      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
-      test("A", CONFIRMED, {});
-      test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+      // Test 3.1
+      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+      test("C", CONFIRMED, change("C", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+      test("B", CONFIRMED, merge(change("A", PERPETRATOR, VICTIM), change("B", CONFIRMED, VICTIM))); // TODO confirmed ~ normal
+
+      // Reciprocal
+      test("B", NORMAL, merge(change("A", VICTIM, PERPETRATOR), change("B", VICTIM, NORMAL)));
     });
 
-    describe("applying changes to both", () => {
-      initialize(graph, true);
-      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+    // Case 3.6
+    describe("loop with tail (A <- B <-> C)", () => {
+      initialize({ A: [], B: ["A", "C"], C: ["B"] });
+      test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+      test("C", CONFIRMED, change("C", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
 
-      // it("test", async () => {
-      //   console.log(JSON.stringify(await graphService.search('A')));
-      //   console.log(JSON.stringify(await graphService.search('B')));
-      //   console.log(
-      //     "---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
-      //   );
-      // });
+      // Test 3.6.a
+      test(
+        "A",
+        CONFIRMED,
+        merge(change("A", CONFIRMED, PERPETRATOR), change("B", PERPETRATOR, VICTIM), change("C", PERPETRATOR, VICTIM))
+      ); // TODO confirmed ~ normal
+      // Test 3.6.b
+      test(
+        "A",
+        NORMAL,
+        merge(change("A", PERPETRATOR, NORMAL), change("B", VICTIM, PERPETRATOR), change("C", VICTIM, PERPETRATOR))
+      ); // TODO confirmed ~ normal
+    });
 
-      test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR), true); // TODO the change should be from "Normal" to "Perp"
-      // it("test", async () => {
-      //   console.log(JSON.stringify(await graphService.search('A')));
-      //   console.log(JSON.stringify(await graphService.search('B')));
-      // });
-      // both CONFIRMED now
+    // Case 3.9
+    describe("8-shape loops (A <-> B <-> C)", () => {
+      initialize({ A: ["B"], B: ["A", "C"], C: ["B"] });
+      test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+      test("C", CONFIRMED, change("C", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
 
-      test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
+      // Test 3.9.a
+      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+      // Test 3.9.b
       test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+
+      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+
+      // Test 3.9.c
+      test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
+      // Test 3.9.d
+      test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
     });
   });
 
