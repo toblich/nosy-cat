@@ -12,7 +12,7 @@
     test: P -> N -> P changes to: V -> V -> P
 2)  A -> B <- C
 !3)  A -> B <-> C
-    test: 
+    test:
         a) P , N , P => V , P , P
         b) V , P , P => P , N , P
         c) N , N , P => N , P , P
@@ -22,13 +22,13 @@
 4)  A <- B -> C
 5)  A <- B <- C = 1)
 !6)  A <- B <-> C
-    test: 
+    test:
         a) N , P , P => P , V , V
         b) P , V , V => N , P , P
 7)  A <-> B -> C = 6)
 8)  A <-> B <- C = 3)
 !9)  A <-> B <-> C
-    test: 
+    test:
         a) N , P , P => P , P , P
         b) P , P , P => N , P , P
         c) P , P , P => P , N , P
@@ -39,11 +39,11 @@
 12) A -> B <-> C ; A -> C
 13) A <- B -> C ; A -> C
 !14) A <- B <- C ; A -> C
-    test: 
+    test:
         a) V , P , N => P , P , P
         b) P , P , P => V , P , N
 !15) A <- B <-> C ; A -> C
-    test: 
+    test:
         a) P , V , N => P , P , P
         b) P , P , P => P , V , N
         c) N , P , P => P , P , P
@@ -64,7 +64,7 @@
 26) A <-> B <- C ; A <-> C
 !27) A <-> B <-> C ; A <-> C
     copy tests from 9
-    test: 
+    test:
         a) N , P , P => P , P , P
         b) P , P , P => N , P , P
         c) P , P , P => P , N , P
@@ -88,7 +88,7 @@ N nodes:
     A -> B -> C -> D -> E -> F -> G -> A ; E -> H -> I -> J -> B
     tests:
     a)  A B C D E F G H I J => A B C D E F G H I J
-        P P P P P P P N V V => P P P P P P P P P P 
+        P P P P P P P N V V => P P P P P P P P P P
     b)  A B C D E F G H I J => A B C D E F G H I J
         P P P P P P P P P P => P P P P P P P N V V
     c)  A B C D E F G H I J => A B C D E F G H I J
