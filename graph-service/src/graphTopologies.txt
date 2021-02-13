@@ -62,7 +62,7 @@
 24) A <- B <-> C ; A <-> C
 25) A <-> B -> C ; A <-> C
 26) A <-> B <- C ; A <-> C
-!27) A <-> B <-> C ; A <-> C 
+!27) A <-> B <-> C ; A <-> C
     copy tests from 9
     test: 
         a) N , P , P => P , P , P
@@ -70,119 +70,32 @@
         c) P , P , P => P , N , P
         d) P , N , P => P , P , P
 
+N nodes:
 
-4 Nodes
-1)  A -> B -> C -> D
-1)  A -> B -> C <- D
-1)  A -> B -> C <-> D
-2)  A -> B <- C -> D
-2)  A -> B <- C <- D
-2)  A -> B <- C <-> D
-3)  A -> B <-> C -> D
-3)  A -> B <-> C <- D
-3)  A -> B <-> C <-> D
-4)  A <- B -> C -> D
-4)  A <- B -> C <- D
-4)  A <- B -> C <-> D
-5)  A <- B <- C -> D
-5)  A <- B <- C <- D
-5)  A <- B <- C <-> D
-6)  A <- B <-> C -> D
-6)  A <- B <-> C <- D
-6)  A <- B <-> C <-> D
-7)  A <-> B -> C -> D
-7)  A <-> B -> C <- D
-7)  A <-> B -> C <-> D
-8)  A <-> B <- C -> D
-8)  A <-> B <- C <- D
-8)  A <-> B <- C <-> D
-9)  A <-> B <-> C -> D
-9)  A <-> B <-> C <- D
-9)  A <-> B <-> C <-> D
-
-10) A -> B -> C ; A -> C -> D
-10) A -> B -> C ; A -> C <- D
-10) A -> B -> C ; A -> C <-> D
-11) A -> B <- C ; A -> C -> D
-11) A -> B <- C ; A -> C <- D
-11) A -> B <- C ; A -> C <-> D
-12) A -> B <-> C ; A -> C -> D
-12) A -> B <-> C ; A -> C <- D
-12) A -> B <-> C ; A -> C <-> D
-13) A <- B -> C ; A -> C -> D
-13) A <- B -> C ; A -> C <- D
-13) A <- B -> C ; A -> C <-> D
-14) A <- B <- C ; A -> C -> D
-14) A <- B <- C ; A -> C <- D
-14) A <- B <- C ; A -> C <-> D
-15) A <- B <-> C ; A -> C -> D
-15) A <- B <-> C ; A -> C <- D
-15) A <- B <-> C ; A -> C <-> D
-16) A <-> B -> C ; A -> C -> D
-16) A <-> B -> C ; A -> C <- D
-16) A <-> B -> C ; A -> C <-> D
-17) A <-> B <- C ; A -> C -> D
-17) A <-> B <- C ; A -> C <- D
-17) A <-> B <- C ; A -> C <-> D
-18) A <-> B <-> C ; A -> C -> D
-18) A <-> B <-> C ; A -> C <- D
-18) A <-> B <-> C ; A -> C <-> D
-
-19) A -> B -> C ; A <-> C -> D
-19) A -> B -> C ; A <-> C <- D
-19) A -> B -> C ; A <-> C <-> D
-20) A -> B <- C ; A <-> C -> D
-20) A -> B <- C ; A <-> C <- D
-20) A -> B <- C ; A <-> C <-> D
-21) A -> B <-> C ; A <-> C -> D
-21) A -> B <-> C ; A <-> C <- D
-21) A -> B <-> C ; A <-> C <-> D
-22) A <- B -> C ; A <-> C -> D
-22) A <- B -> C ; A <-> C <- D
-22) A <- B -> C ; A <-> C <-> D
-23) A <- B <- C ; A <-> C -> D
-23) A <- B <- C ; A <-> C <- D
-23) A <- B <- C ; A <-> C <-> D
-24) A <- B <-> C ; A <-> C -> D
-24) A <- B <-> C ; A <-> C <- D
-24) A <- B <-> C ; A <-> C <-> D
-25) A <-> B -> C ; A <-> C -> D
-25) A <-> B -> C ; A <-> C <- D
-25) A <-> B -> C ; A <-> C <-> D
-26) A <-> B <- C ; A <-> C -> D
-26) A <-> B <- C ; A <-> C <- D
-26) A <-> B <- C ; A <-> C <-> D
-27) A <-> B <-> C ; A <-> C -> D
-27) A <-> B <-> C ; A <-> C <- D
-27) A <-> B <-> C ; A <-> C <-> D
-
-
-1)  A -> B -> C
-2)  A -> B <- C
-3)  A -> B <-> C
-4)  A <- B -> C
-5)  A <- B <- C
-6)  A <- B <-> C
-7)  A <-> B -> C
-8)  A <-> B <- C
-9)  A <-> B <-> C
-
-10) A -> B -> C ; A -> C
-11) A -> B <- C ; A -> C
-12) A -> B <-> C ; A -> C
-13) A <- B -> C ; A -> C
-14) A <- B <- C ; A -> C
-15) A <- B <-> C ; A -> C
-16) A <-> B -> C ; A -> C
-17) A <-> B <- C ; A -> C
-18) A <-> B <-> C ; A -> C
-
-19) A -> B -> C ; A <-> C
-20) A -> B <- C ; A <-> C
-21) A -> B <-> C ; A <-> C
-22) A <- B -> C ; A <-> C
-23) A <- B <- C ; A <-> C
-24) A <- B <-> C ; A <-> C
-25) A <-> B -> C ; A <-> C
-26) A <-> B <- C ; A <-> C
-27) A <-> B <-> C ; A <-> C
+1) A -> B -> C ; C -> A ; D -> A
+    D depende de anillo
+    tests:
+    a) P , P , ... , P , N => P , P , ... , P , V
+    b) P , P , ... , P , V => P , P , ... , P , N
+2) A -> B -> C ; C -> A ; A -> D
+    Anillo depende de D
+    tests:
+    a) P , P , ... , P , N => V , V , ... , V , P
+    b) V , V , ... , V , P => P , P , ... , P , N
+    c) V , V , ... , V , P => N , V , P , ... , P
+    d) N , V , P , ... , P => V , V , ... , V , P
+6) Anillo dentro de anillo
+    A -> B -> C -> D -> E -> F -> G -> A ; E -> H -> I -> J -> B
+    tests:
+    a)  A B C D E F G H I J => A B C D E F G H I J
+        P P P P P P P N V V => P P P P P P P P P P 
+    b)  A B C D E F G H I J => A B C D E F G H I J
+        P P P P P P P P P P => P P P P P P P N V V
+    c)  A B C D E F G H I J => A B C D E F G H I J
+        P N V V V V V V V P => P P P P P P P P P P
+    d)  A B C D E F G H I J => A B C D E F G H I J
+        P P P P P P P P P P => P N V V V V V V V P
+    c)  A B C D E F G H I J => A B C D E F G H I J
+        V V P N V V V V V V => P P P P P P P P P P
+    d)  A B C D E F G H I J => A B C D E F G H I J
+        P P P P P P P P P P => V V P N V V V V V 
