@@ -150,6 +150,7 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     // TODO Do Root Cause Detection here
     await repository.setStatus(id, newStatus, tx);
     logger.debug(`isNormal: ${isNormal}`);
+    const initialNodeChange: Change = { id, from: { status: currentStatus }, to: { status: newStatus } };
 
     // Changing from NORMAL to CONFIRMED
     if (!isNormal) {
@@ -159,18 +160,17 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
       await Promise.all(
         perpetratorCallerIds.map((perpId: string) => repository.setStatus(perpId, ComponentStatus.VICTIM, tx))
       );
+      const initialChangesToPerp = perpetratorCallerIds.map((perp: string) => ({
+        id: perp,
+        from: { status: ComponentStatus.PERPETRATOR },
+        to: { status: ComponentStatus.VICTIM },
+      }));
 
-      const newChanges: Change[] = perpetratorCallerIds
-        .map((perp: string) => ({
-          id: perp,
-          from: { status: ComponentStatus.PERPETRATOR },
-          to: { status: ComponentStatus.VICTIM },
-        }))
-        .concat(
-          await setNewPerpetratorsAndVictims(id, tx) // Analyze the chain beginning from the new CONFIRMED to determine perpetrators and victims
-        );
+      const newChanges = await setNewPerpetratorsAndVictims(id, tx); // Analyze the chain beginning from the new CONFIRMED to determine perpetrators and victims
 
-      return toMergedChangeDict(newChanges);
+      const changes: Change[] = [initialNodeChange, ...initialChangesToPerp, ...newChanges];
+
+      return toMergedChangeDict(changes);
     }
 
     // Changing from some abnormal status to NORMAL
@@ -184,14 +184,13 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     // TODO mark all old victims as suspicious
     const perpCallerIds: string[] = perpCallersResult.records.map((r: Record) => r.get("n")?.properties.id);
 
-    const changes: Change[] = (
+    const otherChanges: Change[] = (
       await Promise.all(
         victimCallerIds.concat(perpCallerIds).map((vid: string) => setNewPerpetratorsAndVictims(vid, tx))
       )
     ).flat();
-    const initialNodeChange: Change = { id, to: { status: newStatus }, from: { status: currentStatus } };
 
-    return toMergedChangeDict([initialNodeChange, ...changes]);
+    return toMergedChangeDict([initialNodeChange, ...otherChanges]);
   });
 }
 

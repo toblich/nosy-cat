@@ -177,7 +177,7 @@ describe("new tests", () => {
   describe("single-node graph (A)", () => {
     initialize({ A: [] });
     test("A", NORMAL, {});
-    test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+    test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
     test("A", CONFIRMED, {});
     test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
   });
@@ -189,7 +189,7 @@ describe("new tests", () => {
       describe("applying changes only to A", () => {
         initialize(graph);
         test("A", NORMAL, {});
-        test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
         test("A", CONFIRMED, {});
         test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
       });
@@ -197,19 +197,19 @@ describe("new tests", () => {
       describe("applying changes only to B", () => {
         initialize(graph);
         test("B", NORMAL, {});
-        test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+        test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
         test("B", CONFIRMED, {});
         test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
       });
 
       describe("applying changes to both", () => {
         initialize(graph);
-        test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
-        test("B", CONFIRMED, merge(change("B", CONFIRMED, PERPETRATOR), change("A", PERPETRATOR, VICTIM))); // TODO the change should be from "Normal" to "Perp"
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+        test("B", CONFIRMED, merge(change("B", NORMAL, PERPETRATOR), change("A", PERPETRATOR, VICTIM)));
         // both CONFIRMED now
 
         test("B", NORMAL, merge(change("B", PERPETRATOR, NORMAL), change("A", VICTIM, PERPETRATOR)));
-        test("B", CONFIRMED, merge(change("B", CONFIRMED, PERPETRATOR), change("A", PERPETRATOR, VICTIM))); // TODO the change should be from "Normal" to "Perp"
+        test("B", CONFIRMED, merge(change("B", NORMAL, PERPETRATOR), change("A", PERPETRATOR, VICTIM)));
         // both CONFIRMED now
 
         test("A", NORMAL, change("A", VICTIM, NORMAL));
@@ -222,15 +222,15 @@ describe("new tests", () => {
       describe("applying changes only to one node", () => {
         initialize(graph);
         test("A", NORMAL, {});
-        test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
         test("A", CONFIRMED, {});
         test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
       });
 
       describe("applying changes to both", () => {
         initialize(graph, true);
-        test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO the change should be from "Normal" to "Perp"
-        test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR), true); // TODO the change should be from "Normal" to "Perp"
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+        test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
         // both CONFIRMED now
 
         test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
@@ -245,9 +245,9 @@ describe("new tests", () => {
       initialize({ A: ["B"], B: ["C"], C: [] });
 
       // Test 3.1
-      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
-      test("C", CONFIRMED, change("C", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
-      test("B", CONFIRMED, merge(change("A", PERPETRATOR, VICTIM), change("B", CONFIRMED, VICTIM))); // TODO confirmed ~ normal
+      test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+      test("C", CONFIRMED, change("C", NORMAL, PERPETRATOR));
+      test("B", CONFIRMED, merge(change("A", PERPETRATOR, VICTIM), change("B", NORMAL, VICTIM)));
 
       // Reciprocal
       test("B", NORMAL, merge(change("A", VICTIM, PERPETRATOR), change("B", VICTIM, NORMAL)));
@@ -256,53 +256,53 @@ describe("new tests", () => {
     // Case 3.6
     describe("loop with tail (A <- B <-> C)", () => {
       initialize({ A: [], B: ["A", "C"], C: ["B"] });
-      test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
-      test("C", CONFIRMED, change("C", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+      test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
+      test("C", CONFIRMED, change("C", NORMAL, PERPETRATOR));
 
       // Test 3.6.a
       test(
         "A",
         CONFIRMED,
-        merge(change("A", CONFIRMED, PERPETRATOR), change("B", PERPETRATOR, VICTIM), change("C", PERPETRATOR, VICTIM))
-      ); // TODO confirmed ~ normal
+        merge(change("A", NORMAL, PERPETRATOR), change("B", PERPETRATOR, VICTIM), change("C", PERPETRATOR, VICTIM))
+      );
       // Test 3.6.b
       test(
         "A",
         NORMAL,
         merge(change("A", PERPETRATOR, NORMAL), change("B", VICTIM, PERPETRATOR), change("C", VICTIM, PERPETRATOR))
-      ); // TODO confirmed ~ normal
+      );
     });
 
     // Case 3.9
     describe("8-shape loops (A <-> B <-> C)", () => {
       initialize({ A: ["B"], B: ["A", "C"], C: ["B"] });
-      test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
-      test("C", CONFIRMED, change("C", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+      test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
+      test("C", CONFIRMED, change("C", NORMAL, PERPETRATOR));
 
       // Test 3.9.a
-      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+      test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
       // Test 3.9.b
       test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
 
-      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+      test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
 
       // Test 3.9.c
       test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
       // Test 3.9.d
-      test("B", CONFIRMED, change("B", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
+      test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
     });
 
     // Case 3.14
     describe("single big loop (~ A <- B <- C <~)", () => {
       initialize({ A: ["C"], B: ["A"], C: ["B"] });
-      test("A", CONFIRMED, change("A", CONFIRMED, PERPETRATOR)); // TODO confirmed ~ normal
-      test("B", CONFIRMED, change("B", CONFIRMED, VICTIM)); // TODO confirmed ~ normal
+      test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+      test("B", CONFIRMED, change("B", NORMAL, VICTIM));
 
       // Test 3.14.a
-      test("C", CONFIRMED, merge(change("B", VICTIM, PERPETRATOR), change("C", CONFIRMED, PERPETRATOR))); // TODO confirmed ~ normal
+      test("C", CONFIRMED, merge(change("B", VICTIM, PERPETRATOR), change("C", NORMAL, PERPETRATOR)));
 
       // Test 3.14.b
-      test("C", NORMAL, merge(change("B", PERPETRATOR, VICTIM), change("C", PERPETRATOR, NORMAL)), true);
+      test("C", NORMAL, merge(change("B", PERPETRATOR, VICTIM), change("C", PERPETRATOR, NORMAL)));
     });
   });
 
