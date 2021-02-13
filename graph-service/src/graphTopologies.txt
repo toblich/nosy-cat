@@ -98,4 +98,4 @@ N nodes:
     c)  A B C D E F G H I J => A B C D E F G H I J
         V V P N V V V V V V => P P P P P P P P P P
     d)  A B C D E F G H I J => A B C D E F G H I J
-        P P P P P P P P P P => V V P N V V V V V 
+        P P P P P P P P P P => V V P N V V V V V V
