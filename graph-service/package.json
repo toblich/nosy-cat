@@ -21,7 +21,7 @@
     "http-errors": "^1.7.3",
     "lodash": "^4.17.15",
     "neo4j-driver": "^4.X.X",
-    "socket.io": "^2.3.0"
+    "socket.io": "^2.4.0"
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.27",
