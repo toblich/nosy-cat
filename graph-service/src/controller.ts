@@ -20,7 +20,7 @@ export async function addComponentsAndDependencies(req: AddComponentsReq, res: R
 }
 
 export async function getGraphAsJson(_: EmptyReq, res: Response): Promise<void> {
-  const result = await service.toPlainObject();
+  const result = await graphService.getFullGraph();
   logger.debug(`Got result ${JSON.stringify(result, null, 4)}`);
   res.json(result);
 }

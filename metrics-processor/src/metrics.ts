@@ -3,6 +3,7 @@ import * as Redlock from "redlock";
 import { map, mapValues } from "lodash";
 
 import { EWMA, EWMAStdDeviation } from "./ewma";
+import { inspect } from "util";
 
 const MIN_IN_MS = 10000; // TODO 1 min in milliseconds
 const DELIM = ":";
@@ -101,8 +102,6 @@ async function updateBuffer(key: string, duration: number, errored: boolean): Pr
   await exec(multi);
 }
 
-type Callback = (value: number) => void;
-
 async function updateEWMAs(component: string, bufferKey: string): Promise<HistoricMetric[]> {
   logger.debug(`${component}: Locking...`);
   const lock = await redlock.lock(component, TTL_LOCKS);
@@ -125,13 +124,25 @@ async function updateEWMAs(component: string, bufferKey: string): Promise<Histor
   ).map(toComponentMetric);
 
   const multi = ewmaRedisClient.multi();
+  const newEWMA: ComponentMetrics = {
+    errorRate: null,
+    meanResponseTimeMs: null,
+    throughput: null,
+  };
+  const newEWMASquare: ComponentMetrics = {
+    errorRate: null,
+    meanResponseTimeMs: null,
+    throughput: null,
+  };
+
   for (const field of Object.values(metricFields)) {
     const currentMeasure = metrics[field];
-    const hset = (key: string): Callback => (value: number): void => {
-      multi.hset(key, field, "" + value);
-    };
-    updateEWMA(currentMeasure, ewmas, field, hset(ewmaKey));
-    updateEWMA(currentMeasure * currentMeasure, ewmaSquares, field, hset(ewmaSquaresKey));
+
+    newEWMA[field] = updateEWMA(currentMeasure, ewmas, field);
+    multi.hset(ewmaKey, field, "" + newEWMA[field]);
+
+    newEWMASquare[field] = updateEWMA(currentMeasure * currentMeasure, ewmaSquares, field);
+    multi.hset(ewmaSquaresKey, field, "" + newEWMASquare[field]);
   }
   multi.expire(ewmaKey, TTL_EWMAS);
   multi.expire(ewmaSquaresKey, TTL_EWMAS);
@@ -154,15 +165,24 @@ async function updateEWMAs(component: string, bufferKey: string): Promise<Histor
   return map(metricFields, (field: string) => ({
     name: field,
     latest: +metrics[field],
-    historicAvg: +ewmas[field],
-    historicStdDev: EWMAStdDeviation(+ewmaSquares[field], +ewmas[field]),
+    historicAvg: +ewmas[field] || metrics[field],
+    historicStdDev: EWMAStdDeviation(
+      +ewmaSquares[field] || metrics[field] * metrics[field],
+      +ewmas[field] || +metrics[field]
+    ),
+    // historicAvg: newEWMA[field],
+    // historicStdDev: EWMAStdDeviation(newEWMASquare[field], newEWMA[field]),
   }));
 }
 
-function updateEWMA(currentMeasure: number, ewmas: ComponentMetrics, field: string, callback: Callback): void {
+function updateEWMA(currentMeasure: number, ewmas: ComponentMetrics, field: string): number {
   // initialize at current measure (when there's no previous EWMA)
-  const currentEWMA = ewmas ? +ewmas[field] : currentMeasure;
-  callback(EWMA(currentEWMA, currentMeasure));
+  const currentEWMA = ewmas && ewmas[field] ? +ewmas[field] : currentMeasure;
+  logger.debug(
+    `currentEWMA: ${currentEWMA}, EWMA result: ${EWMA(currentEWMA, currentMeasure)}, currentMeasure: ${currentMeasure}`
+  );
+  const newEWMA = EWMA(currentEWMA, currentMeasure);
+  return newEWMA;
 }
 
 function aggregateBuffer(metrics: MetricsBuffer): ComponentMetrics {
@@ -204,6 +224,7 @@ function buildEWMASquaresKey(component: string): string {
 }
 
 function toComponentMetric(componentMetricString: ComponentMetricStrings): ComponentMetrics {
+  logger.debug(`componentMetricString: ${inspect(componentMetricString, false, 4)}`);
   return mapValues(componentMetricString, (str: string) => +str);
 }
 

@@ -40,6 +40,7 @@ export async function processComponentCall(
 
   const errorMessages = componentMetrics.metrics
     .map((metric: HistoricMetric): any => {
+      logger.debug(`metrics-historicAvg: ${metric.historicAvg} metric-historicStdDev: ${metric.historicStdDev}`);
       const thresholds: Range = {
         minimum: metric.historicAvg - ACCEPTED_STD_DEVIATIONS * metric.historicStdDev,
         maximum: metric.historicAvg + ACCEPTED_STD_DEVIATIONS * metric.historicStdDev,
