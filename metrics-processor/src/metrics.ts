@@ -124,25 +124,15 @@ async function updateEWMAs(component: string, bufferKey: string): Promise<Histor
   ).map(toComponentMetric);
 
   const multi = ewmaRedisClient.multi();
-  const newEWMA: ComponentMetrics = {
-    errorRate: null,
-    meanResponseTimeMs: null,
-    throughput: null,
-  };
-  const newEWMASquare: ComponentMetrics = {
-    errorRate: null,
-    meanResponseTimeMs: null,
-    throughput: null,
-  };
 
   for (const field of Object.values(metricFields)) {
     const currentMeasure = metrics[field];
 
-    newEWMA[field] = updateEWMA(currentMeasure, ewmas, field);
-    multi.hset(ewmaKey, field, "" + newEWMA[field]);
+    const newEWMA = updateEWMA(currentMeasure, ewmas, field);
+    multi.hset(ewmaKey, field, "" + newEWMA);
 
-    newEWMASquare[field] = updateEWMA(currentMeasure * currentMeasure, ewmaSquares, field);
-    multi.hset(ewmaSquaresKey, field, "" + newEWMASquare[field]);
+    const newEWMASquare = updateEWMA(currentMeasure * currentMeasure, ewmaSquares, field);
+    multi.hset(ewmaSquaresKey, field, "" + newEWMASquare);
   }
   multi.expire(ewmaKey, TTL_EWMAS);
   multi.expire(ewmaSquaresKey, TTL_EWMAS);
@@ -162,17 +152,15 @@ async function updateEWMAs(component: string, bufferKey: string): Promise<Histor
     throw error;
   }
 
-  return map(metricFields, (field: string) => ({
-    name: field,
-    latest: +metrics[field],
-    historicAvg: +ewmas[field] || metrics[field],
-    historicStdDev: EWMAStdDeviation(
-      +ewmaSquares[field] || metrics[field] * metrics[field],
-      +ewmas[field] || +metrics[field]
-    ),
-    // historicAvg: newEWMA[field],
-    // historicStdDev: EWMAStdDeviation(newEWMASquare[field], newEWMA[field]),
-  }));
+  return map(metricFields, (field: string) => {
+    const avg = +(ewmas[field] || metrics[field]);
+    return {
+      name: field,
+      latest: +metrics[field],
+      historicAvg: avg,
+      historicStdDev: EWMAStdDeviation(+ewmaSquares[field] || avg * avg, avg),
+    };
+  });
 }
 
 function updateEWMA(currentMeasure: number, ewmas: ComponentMetrics, field: string): number {
