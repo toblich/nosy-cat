@@ -1,0 +1,101 @@
+1 Node
+
+1) A
+
+2 Nodes
+
+1) A -> B
+2) A <-> B
+
+3 Nodes
+!1)  A -> B -> C
+    test: P -> N -> P changes to: V -> V -> P
+2)  A -> B <- C
+!3)  A -> B <-> C
+    test:
+        a) P , N , P => V , P , P
+        b) V , P , P => P , N , P
+        c) N , N , P => N , P , P
+        d) N , P , P => N , N , P
+        e) N , P , P => V , P , P
+        f) V , P , P => N , P , P
+4)  A <- B -> C
+5)  A <- B <- C = 1)
+!6)  A <- B <-> C
+    test:
+        a) N , P , P => P , V , V
+        b) P , V , V => N , P , P
+7)  A <-> B -> C = 6)
+8)  A <-> B <- C = 3)
+!9)  A <-> B <-> C
+    test:
+        a) N , P , P => P , P , P
+        b) P , P , P => N , P , P
+        c) P , P , P => P , N , P
+        d) P , N , P => P , P , P
+
+10) A -> B -> C ; A -> C
+11) A -> B <- C ; A -> C
+12) A -> B <-> C ; A -> C
+13) A <- B -> C ; A -> C
+!14) A <- B <- C ; A -> C
+    test:
+        a) V , P , N => P , P , P
+        b) P , P , P => V , P , N
+!15) A <- B <-> C ; A -> C
+    test:
+        a) P , V , N => P , P , P
+        b) P , P , P => P , V , N
+        c) N , P , P => P , P , P
+        d) P , P , P => N , P , P
+        e) V , N , P => P , P , P
+        f) P , P , P => V , N , P
+16) A <-> B -> C ; A -> C
+17) A <-> B <- C ; A -> C
+18) A <-> B <-> C ; A -> C
+
+19) A -> B -> C ; A <-> C
+20) A -> B <- C ; A <-> C
+21) A -> B <-> C ; A <-> C
+22) A <- B -> C ; A <-> C
+23) A <- B <- C ; A <-> C
+24) A <- B <-> C ; A <-> C
+25) A <-> B -> C ; A <-> C
+26) A <-> B <- C ; A <-> C
+!27) A <-> B <-> C ; A <-> C
+    copy tests from 9
+    test:
+        a) N , P , P => P , P , P
+        b) P , P , P => N , P , P
+        c) P , P , P => P , N , P
+        d) P , N , P => P , P , P
+
+N nodes:
+
+1) A -> B -> C ; C -> A ; D -> A
+    D depende de anillo
+    tests:
+    a) P , P , ... , P , N => P , P , ... , P , V
+    b) P , P , ... , P , V => P , P , ... , P , N
+2) A -> B -> C ; C -> A ; A -> D
+    Anillo depende de D
+    tests:
+    a) P , P , ... , P , N => V , V , ... , V , P
+    b) V , V , ... , V , P => P , P , ... , P , N
+    c) V , V , ... , V , P => N , V , ... , V , P , P
+    d) N , V , ... , V , P , P => V , V , ... , V , P
+3) Anillo dentro de anillo
+    A -> B -> C -> D -> E -> F -> G -> A ; E -> H -> I -> J -> B
+    tests:
+    a)  A B C D E F G H I J => A B C D E F G H I J
+        P P P P P P P N V V => P P P P P P P P P P
+    b)  A B C D E F G H I J => A B C D E F G H I J
+        P P P P P P P P P P => P P P P P P P N V V
+    c)  A B C D E F G H I J => A B C D E F G H I J
+        P P P P P P P P P P => P N V V V V V V V P
+    d)  A B C D E F G H I J => A B C D E F G H I J
+        P N V V V V V V V P => P P P P P P P P P P
+    e)  A B C D E F G H I J => A B C D E F G H I J
+        P P P P P P P P P P => V V P N V V V V V V
+    f)  A B C D E F G H I J => A B C D E F G H I J
+        V V P N V V V V V V => P P P P P P P P P P

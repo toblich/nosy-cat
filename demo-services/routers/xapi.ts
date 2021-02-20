@@ -21,7 +21,7 @@ const iamWrapper = wrap(fetch, { tracer, remoteServiceName: "iam" });
 
 const redis = zipkinRedis(tracer, Redis, {
   host: "redis",
-  port: "6379"
+  port: "6379",
 });
 
 for (const method of ["set", "get", "del"]) {
@@ -53,9 +53,13 @@ router.get("/login", async (req, res) => {
 });
 
 router.get("/authorize", async (req, res) => {
-  const response = await serviceFetchers.iam("/authorize");
+  try {
+    const response = await serviceFetchers.iam("/authorize");
+  } catch (error) {
+    res.status(503).json(error.body);
+  }
   const time = await redis.get("TIME");
-  res.status(response.status).json(response.body);
+  res.status(503).json({ hola: "chau" });
 });
 
 export default router;

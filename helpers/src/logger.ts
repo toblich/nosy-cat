@@ -7,23 +7,21 @@ const config = {
   levels: {
     error: 0,
     warn: 1,
-    info: 2,
-    data: 3,
+    data: 2,
+    info: 3,
     verbose: 4,
     debug: 5,
     silly: 6,
-    custom: 7
   },
   colors: {
-    error: "red",
+    error: "bold red",
     debug: "blue",
-    warn: "yellow",
+    warn: "bold yellow",
     data: "grey",
-    info: "green",
-    verbose: "cyan",
-    silly: "magenta",
-    custom: "yellow"
-  }
+    info: "bold green",
+    verbose: "magenta",
+    silly: "dim magenta",
+  },
 };
 
 winston.addColors(config.colors);
@@ -35,12 +33,8 @@ const logger = winston.createLogger({
     winston.format.colorize(),
     winston.format.printf((info: winston.LogEntry) => `${info.timestamp} - ${info.level}: ${info.message}`)
   ),
-  transports: [
-    new winston.transports.Console({
-      level: process.env.LOG || (process.env.NODE_ENV === "test" ? "error" : "debug")
-    })
-  ],
-  level: "custom"
+  transports: [new winston.transports.Console()],
+  level: process.env.NODE_ENV === "test" ? "error" : "silly",
 });
 
 // logger.error("hello");

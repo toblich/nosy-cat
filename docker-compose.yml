@@ -35,7 +35,7 @@ services:
       - "./helpers/src:/project/helpers/src"
       - "./ingress/tsconfig.json:/project/app/tsconfig.json"
       - "./ingress/src:/project/app/src"
-    links:
+    depends_on:
       - kafka
     command: *base-kafka-command
     environment: *base-environment
@@ -56,9 +56,29 @@ services:
       - "./dependency-detector/tsconfig.json:/project/app/tsconfig.json"
       - "./dependency-detector/src:/project/app/src"
     command: *base-kafka-command
-    links:
+    depends_on:
       - graph-service
       - kafka
+    environment: *base-environment
+    networks:
+      - default
+
+  metrics-processor:
+    build:
+      <<: *base-build
+      args:
+        - SERVICE=metrics-processor
+    volumes:
+      - "./nodemon.json:/project/nodemon.json"
+      - "./helpers/tsconfig.json:/project/helpers/tsconfig.json"
+      - "./helpers/declarations:/project/helpers/declarations"
+      - "./helpers/src:/project/helpers/src"
+      - "./metrics-processor/tsconfig.json:/project/app/tsconfig.json"
+      - "./metrics-processor/src:/project/app/src"
+    command: *base-kafka-command
+    depends_on:
+      - kafka
+      - redis
     environment: *base-environment
     networks:
       - default
@@ -76,10 +96,8 @@ services:
       - "./anomaly-detector/tsconfig.json:/project/app/tsconfig.json"
       - "./anomaly-detector/src:/project/app/src"
     command: *base-kafka-command
-    links:
-      - graph-service
-      - kafka
     depends_on:
+      - graph-service
       - kafka
     environment:
       <<: *base-environment
@@ -99,30 +117,44 @@ services:
       - "./helpers/declarations:/project/helpers/declarations"
       - "./helpers/src:/project/helpers/src"
       - "./graph-service/tsconfig.json:/project/app/tsconfig.json"
+      - "./graph-service/jest.config.js:/project/app/jest.config.js"
       - "./graph-service/src:/project/app/src"
-    command: *base-command
-    links:
+    command: sh -c "./wait-for-it.sh $$NEO4J_STATUS -t 30 -- npm run start:dockerized"
+    depends_on:
       - redis
       - neo4j
     environment:
       <<: *base-environment
+      NEO4J_HOST: neo4j://neo4j:7687
+      NEO4J_STATUS: http://neo4j:7474
     networks:
       - default
 
   neo4j:
-    image: bitnami/neo4j:4
+    image: bitnami/neo4j:4.1.3
     ports:
       - "7474:7474" # http
-      - '7473:7473' # https
+      - "7473:7473" # https
       - "7687:7687" # bolt
     ## Uncomment the following lines to enable data persistence
     # volumes:
     #   - "./graph-data:/bitnami"
     environment:
-      NEO4J_HOST: localhost # advertise as localhost so that the default browser link has that
-      NEO4J_dbms_connector_bolt_address: "0.0.0.0" # allow connections from anywhere
+      ##########
+      # WARNING: To have Neo4J Browser running on host communicate with neo4j properly, edit /etc/hosts on
+      # your machine and make the domain "neo4j" map to "127.0.0.1"
+      # Docs on how to edit that file (macOS): https://www.inmotionhosting.com/support/website/software/how-to-edit-your-hosts-file-on-a-mac/
+      ##########
+      # Advertise domain instead of ip so that calls from other containers and the host machine do a different
+      # dns resolution (docker container ip  for other containers, localhost for browser as the ports are exposed)
+      NEO4J_HOST: "neo4j"
     networks:
       - default
+
+  browser-proxy:
+    image: nginx:1.17
+    ports:
+      - "80:80"
 
   pagerduty-integration:
     build:
@@ -137,8 +169,6 @@ services:
       - "./pagerduty-integration/tsconfig.json:/project/app/tsconfig.json"
       - "./pagerduty-integration/src:/project/app/src"
     command: *base-kafka-command
-    links:
-      - kafka
     depends_on:
       - kafka
     environment:
@@ -157,8 +187,6 @@ services:
     image: wurstmeister/kafka
     depends_on:
       - zookeeper
-    links:
-      - zookeeper
     ports:
       - "9092:9092"
     environment:
@@ -171,6 +199,18 @@ services:
     networks:
       - default
 
+  kowl:
+    image: quay.io/cloudhut/kowl:v1.1.0
+    volumes:
+      - ./kowl.yml:/etc/kowl/config.yaml
+    ports:
+      - "8080:8080"
+    entrypoint: ./kowl --config.filepath=/etc/kowl/config.yaml
+    depends_on:
+      - kafka
+    networks:
+      - default
+
   redis:
     image: redis
     ports:
@@ -180,9 +220,18 @@ services:
 
   redis-cli:
     image: redis
-    links:
+    depends_on:
       - redis
     command: redis-cli -h redis
+    networks:
+      - default
+
+  redis-insight:
+    image: redislabs/redisinsight
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
     networks:
       - default
 

@@ -1,7 +1,7 @@
 {
-  "name": "dependency-detector",
+  "name": "metrics-processor",
   "version": "0.0.1",
-  "description": "Service that detects dependencies on components",
+  "description": "Service that processes the metrics of components",
   "main": "src/app.ts",
   "scripts": {
     "start": "nodemon --config ../nodemon.json",
@@ -13,13 +13,19 @@
   "author": "",
   "license": "BSD-3-Clause",
   "dependencies": {
-    "helpers": "file:../helpers"
+    "helpers": "file:../helpers",
+    "lodash": "^4.17.15",
+    "redlock": "^4.1.0",
+    "zipkin": "^0.18.6"
   },
   "devDependencies": {
+    "@types/lodash": "^4.14.138",
     "@types/node": "^12.6.2",
+    "@types/redis-mock": "^0.17.0",
+    "@types/redlock": "^4.0.1",
     "nodemon": "^1.19.1",
+    "redis-mock": "^0.46.0",
     "ts-node": "^8.3.0",
-    "typescript": "^4.0.3",
-    "zipkin": "^0.18.6"
+    "typescript": "^4.0.3"
   }
 }
