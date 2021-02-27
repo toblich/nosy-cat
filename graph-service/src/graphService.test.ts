@@ -17,6 +17,8 @@ describe("new tests", () => {
   beforeAll(async () => {
     await availableDb();
 
+    graphService.setTransitioningThresholds({ [NORMAL]: 1, [CONFIRMED]: 1 });
+
     try {
       await graphService.clear();
     } catch (error) {

@@ -16,7 +16,7 @@ import {
   logger,
 } from "helpers";
 
-import Repository, { Result, Record, Transaction } from "./repository";
+import Repository, { Result, Record as Neo4jRecord, Transaction } from "./repository";
 import { Component } from "./Graph";
 
 //////////////////////
@@ -40,7 +40,16 @@ export interface Node {
 
 const repository = new Repository();
 
-const TRANSITIONING_THRESHOLD = 3;
+const DEFAULT_TRANSITIONING_THRESHOLD = 3;
+
+type Thresholds = Record<ComponentStatus.NORMAL | ComponentStatus.CONFIRMED, number>;
+let _thresholds: Thresholds = {
+  [ComponentStatus.NORMAL]: DEFAULT_TRANSITIONING_THRESHOLD,
+  [ComponentStatus.CONFIRMED]: DEFAULT_TRANSITIONING_THRESHOLD,
+};
+export function setTransitioningThresholds(thresholds: Thresholds): void {
+  _thresholds = thresholds;
+}
 
 // logger.warn("Initializing graph!");
 // (async () => {
@@ -114,7 +123,7 @@ export async function findCausalChain(initialId: string, tx?: Transaction): Prom
 
   // TODO consider moving logic into repository
   const caller = result.records[0].get("caller").properties;
-  const tail = result.records.map((r: Record) => r.get("resultNode")?.properties).filter((n: Node | null) => n);
+  const tail = result.records.map((r: Neo4jRecord) => r.get("resultNode")?.properties).filter((n: Node | null) => n);
 
   logger.warn("CHAIN " + inspect([caller, ...tail]));
 
@@ -158,7 +167,10 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
 
     const updatedCounter = transitionCounter + 1;
 
-    if (updatedCounter < TRANSITIONING_THRESHOLD) {
+    const transitionThreshold = wasNormal
+      ? _thresholds[ComponentStatus.CONFIRMED]
+      : _thresholds[ComponentStatus.NORMAL];
+    if (updatedCounter < transitionThreshold) {
       logger.debug(`Incrementing transitionCounter to ${updatedCounter} for ${id}`);
       await repository.setTransitionCounter(id, updatedCounter, tx);
       return {}; // There was no status change
@@ -173,7 +185,7 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     if (!isNormal) {
       // Mark perpetrators that called the new CONFIRMED node as victims
       const perpetratorCallersResult = await repository.getPerpetratorChain(id, tx);
-      const perpetratorCallerIds = perpetratorCallersResult.records.map((r: Record) => r.get("n")?.properties.id);
+      const perpetratorCallerIds = perpetratorCallersResult.records.map((r: Neo4jRecord) => r.get("n")?.properties.id);
       await Promise.all(
         perpetratorCallerIds.map((perpId: string) => repository.setStatus(perpId, ComponentStatus.VICTIM, tx))
       );
@@ -194,12 +206,14 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     // Mark victims that called the new NORMAL node as perpetrators
     const victimCallersResult = await repository.getCallersWithStatus(id, ComponentStatus.VICTIM, tx);
     // TODO mark all old victims as suspicious
-    const victimCallerIds: string[] = victimCallersResult.records.map((r: Record) => r.get("caller")?.properties.id);
+    const victimCallerIds: string[] = victimCallersResult.records.map(
+      (r: Neo4jRecord) => r.get("caller")?.properties.id
+    );
 
     // For cases with cycles, perps might be calling the used-to-be-perp node too
     const perpCallersResult = await repository.getPerpetratorChain(id, tx);
     // TODO mark all old victims as suspicious
-    const perpCallerIds: string[] = perpCallersResult.records.map((r: Record) => r.get("n")?.properties.id);
+    const perpCallerIds: string[] = perpCallersResult.records.map((r: Neo4jRecord) => r.get("n")?.properties.id);
 
     const otherChanges: Change[] = (
       await Promise.all(
