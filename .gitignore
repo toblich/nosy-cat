@@ -90,3 +90,5 @@ yarn-debug.log*
 yarn-error.log*
 
 graph-data
+
+demo-services/result.csv
