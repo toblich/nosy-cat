@@ -13,17 +13,20 @@ export class Component {
   public dependencies: Set<string>;
   public consumers: Set<string>;
   public status: ComponentStatus;
+  public transitionCounter: number;
 
   constructor(
     id: string,
     dependencies: Set<string> = new Set(),
     consumers: Set<string> = new Set(),
-    status: ComponentStatus = ComponentStatus.NORMAL
+    status: ComponentStatus = ComponentStatus.NORMAL,
+    transitionCounter: number = 0
   ) {
     this.id = id;
     this.dependencies = dependencies;
     this.consumers = consumers;
     this.status = status;
+    this.transitionCounter = transitionCounter;
   }
 
   public dependsOn(id: string): boolean {
@@ -47,7 +50,7 @@ export class Component {
       id: this.id,
       dependencies: Array.from(this.dependencies),
       consumers: Array.from(this.consumers),
-      status: this.status
+      status: this.status,
     };
   }
 }
