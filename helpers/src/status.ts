@@ -26,8 +26,4 @@ function hasChanged(oldStatus: ComponentStatus, newStatus: ComponentStatus): boo
   return isNormal(oldStatus) !== isNormal(newStatus);
 }
 
-function statusStateMachine(statusVarName: string, incomingStatus: ComponentStatus): string {
-  return "";
-}
-
 export const status = { isAnomalous, isNormal, hasChanged, isAnomalousCypher };
