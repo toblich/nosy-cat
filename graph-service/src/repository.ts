@@ -1,4 +1,4 @@
-import { logger, ComponentCallMetrics, ComponentStatus as STATUS, status as statusUtils } from "helpers";
+import { logger, ComponentStatus as STATUS, status as statusUtils } from "helpers";
 import * as neo4j from "neo4j-driver";
 import { Component } from "./Graph";
 import { Request } from "express";
@@ -9,7 +9,9 @@ export type Record = neo4j.Record;
 export type Transaction = neo4j.Transaction & { debugId?: number };
 
 export default class Repository {
-  private driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"));
+  private driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"), {
+    disableLosslessIntegers: true,
+  });
   private static VIRTUAL_NODE = "VIRTUAL_NODE";
 
   public constructor() {
@@ -85,31 +87,20 @@ export default class Repository {
     return this.run(`MATCH (x:${Repository.VIRTUAL_NODE}) SET x.flag = 1`, {}, tx);
   }
 
-  public async addCall(
-    caller: string | undefined,
-    callee: string,
-    metrics: ComponentCallMetrics,
-    tx?: Transaction
-  ): Promise<Result> {
-    logger.debug(`Adding call ${caller}->${callee} ${JSON.stringify(metrics)} ${tx ? tx.debugId : "no-tx"}`);
-    const emptyMetrics: ComponentCallMetrics = {
-      // TODO update metrics
-      duration: 0,
-      errored: false,
-      timestamp: 0,
-    };
+  public async addCall(caller: string | undefined, callee: string, tx?: Transaction): Promise<Result> {
+    logger.debug(`Adding call ${caller}->${callee} ${tx ? tx.debugId : "no-tx"}`);
+
     if (!caller) {
       return this.run(
         `
           MERGE (callee:Component {id: $callee})
             ON CREATE SET
-              callee = $metrics,
               callee.id = $callee,
-              callee.count = 1,
+              callee.transition_counter = 0,
               callee.status = "${STATUS.NORMAL}",
               callee:${STATUS.NORMAL}
-        `, // TODO update metrics
-        { callee, metrics },
+        `,
+        { callee },
         tx
       );
     }
@@ -117,24 +108,22 @@ export default class Repository {
       `
         MERGE (caller:Component {id: $caller})
           ON CREATE SET
-            caller = $emptyMetrics,
             caller.id = $caller,
-            caller.count = 1,
+            caller.transition_counter = 0,
             caller.status = "${STATUS.NORMAL}",
             caller:${STATUS.NORMAL}
         MERGE (callee:Component {id: $callee})
           ON CREATE SET
-            callee = $metrics,
             callee.id = $callee,
-            callee.count = 1,
+            callee.transition_counter = 0,
             callee.status = "${STATUS.NORMAL}",
             callee:${STATUS.NORMAL}
         MERGE (caller)-[r:CALLS]->(callee)
           ON CREATE SET
-            r.callee_is = ${statusUtils.isAnomalousCypher},
+            r.callee_is = ${statusUtils.isAnomalousCypher("callee.status")},
             r.callee_status = callee.status
       `,
-      { caller, callee, metrics, emptyMetrics },
+      { caller, callee },
       tx
     );
   }
@@ -153,18 +142,22 @@ export default class Repository {
       { id },
       tx
     );
-    // TODO cast result to "Component"?
-    // const component = new Component(result)
+
     logger.warn("COMPONENT " + inspect(result.records[0].get("component")));
     const node: neo4j.Node = result.records[0].get("component");
     const dependencies = result.records.map((x: neo4j.Record) => x.get("v")?.properties.id).filter((s: string) => s);
 
     const props: any = node.properties; // TODO this is a negrada
-    return new Component(props.id, new Set(dependencies), new Set(), props.status);
-    // return new Component("hardcoded-test-name");
+
+    return new Component(props.id, new Set(dependencies), new Set(), props.status, props.transition_counter);
   }
 
-  public async setStatus(id: string, status: STATUS, tx?: Transaction): Promise<Result> {
+  public async setStatus(
+    id: string,
+    status: STATUS,
+    tx?: Transaction,
+    opts: { resetCounter?: boolean } = { resetCounter: false }
+  ): Promise<Result> {
     if (!STATUS[status]) {
       logger.warn(`Trying to set invalid status (id: ${id}, status: ${status}, tx: ${tx ? tx.debugId : "no-tx"})`);
       throw Error("InvalidStatus");
@@ -177,12 +170,25 @@ export default class Repository {
           .map((s: STATUS) => `x:${s}`)
           .concat(["x:Abnormal"])
           .join(", ")}
-        SET x:${status}, x.status = $status${statusUtils.isAnomalous(status) ? ", x:Abnormal" : ""}
+        SET x:${status}, x.status = $status${statusUtils.isAnomalous(status) ? ", x:Abnormal" : ""}${
+        opts.resetCounter ? ", x.transition_counter = 0" : ""
+      }
         WITH x
         MATCH ()-[r:CALLS]->(x)
-        SET r.callee_status = $status, r.callee_is = "${statusUtils.isAnomalous(status) ? "Abnormal" : STATUS.NORMAL}"
+        SET r.callee_status = $status, r.callee_is = ${statusUtils.isAnomalousCypher("x.status")}
       `,
       { id, status },
+      tx
+    );
+  }
+
+  public async setTransitionCounter(id: string, value: number, tx?: Transaction): Promise<Result> {
+    return this.run(
+      `
+        MATCH (x :Component {id: $id})
+        SET x.transition_counter = $value
+      `,
+      { id, value },
       tx
     );
   }

@@ -16,7 +16,7 @@ import {
   logger,
 } from "helpers";
 
-import Repository, { Result, Record, Transaction } from "./repository";
+import Repository, { Result, Record as Neo4jRecord, Transaction } from "./repository";
 import { Component } from "./Graph";
 
 //////////////////////
@@ -35,10 +35,21 @@ export interface Node {
 // --- Initialization ---
 //////////////////////////
 // Example: G <-> I -> H
-// When CONFIMING H after all others were confirmed, only I is changed to VICTIM (but both G&I should change as they're
+// When CONFIRMING H after all others were confirmed, only I is changed to VICTIM (but both G&I should change as they're
 // part of the same supernode)
 
 const repository = new Repository();
+
+const DEFAULT_TRANSITIONING_THRESHOLD = 3;
+
+type Thresholds = Record<ComponentStatus.NORMAL | ComponentStatus.CONFIRMED, number>;
+let _thresholds: Thresholds = {
+  [ComponentStatus.NORMAL]: DEFAULT_TRANSITIONING_THRESHOLD,
+  [ComponentStatus.CONFIRMED]: DEFAULT_TRANSITIONING_THRESHOLD,
+};
+export function setTransitioningThresholds(thresholds: Thresholds): void {
+  _thresholds = thresholds;
+}
 
 // logger.warn("Initializing graph!");
 // (async () => {
@@ -92,8 +103,8 @@ export async function clear(): Promise<void> {
 
 export async function add(calls: ComponentCall[]): Promise<void> {
   return transact(async (tx: Transaction) => {
-    for (const { caller, callee, metrics } of calls) {
-      await repository.addCall(caller, callee, metrics, tx);
+    for (const { caller, callee } of calls) {
+      await repository.addCall(caller, callee, tx);
     }
   });
 }
@@ -112,7 +123,7 @@ export async function findCausalChain(initialId: string, tx?: Transaction): Prom
 
   // TODO consider moving logic into repository
   const caller = result.records[0].get("caller").properties;
-  const tail = result.records.map((r: Record) => r.get("resultNode")?.properties).filter((n: Node | null) => n);
+  const tail = result.records.map((r: Neo4jRecord) => r.get("resultNode")?.properties).filter((n: Node | null) => n);
 
   logger.warn("CHAIN " + inspect([caller, ...tail]));
 
@@ -138,17 +149,35 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
   const isNormal = status.isNormal(newStatus);
   return transact(async (tx: Transaction) => {
     await repository.acquireExclusiveLock(tx);
-    const currentStatus = (await repository.getComponent(id, tx)).status;
+    const { status: currentStatus, transitionCounter } = await repository.getComponent(id, tx);
     const wasNormal = status.isNormal(currentStatus);
     logger.debug(`Previous Status: ${currentStatus} - newStatus: ${newStatus}`);
     if (wasNormal === isNormal) {
-      logger.debug("Not updating because status has not changed");
+      if (transitionCounter !== 0) {
+        // TODO if occurrences != 0, this should reset the occurrences.
+        logger.debug(`Abort transitioning for component ${id}`);
+        await repository.setTransitionCounter(id, 0, tx);
+        return {}; // There was no status change
+      }
+
+      logger.debug("Not updating because status has not changed and it was not transitioning");
       // There was no change
       return {};
     }
 
+    const updatedCounter = transitionCounter + 1;
+
+    const transitionThreshold = wasNormal
+      ? _thresholds[ComponentStatus.CONFIRMED]
+      : _thresholds[ComponentStatus.NORMAL];
+    if (updatedCounter < transitionThreshold) {
+      logger.debug(`Incrementing transitionCounter to ${updatedCounter} for ${id}`);
+      await repository.setTransitionCounter(id, updatedCounter, tx);
+      return {}; // There was no status change
+    }
+
     // TODO Do Root Cause Detection here
-    await repository.setStatus(id, newStatus, tx);
+    await repository.setStatus(id, newStatus, tx, { resetCounter: true });
     logger.debug(`isNormal: ${isNormal}`);
     const initialNodeChange: Change = { id, from: { status: currentStatus }, to: { status: newStatus } };
 
@@ -156,7 +185,7 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     if (!isNormal) {
       // Mark perpetrators that called the new CONFIRMED node as victims
       const perpetratorCallersResult = await repository.getPerpetratorChain(id, tx);
-      const perpetratorCallerIds = perpetratorCallersResult.records.map((r: Record) => r.get("n")?.properties.id);
+      const perpetratorCallerIds = perpetratorCallersResult.records.map((r: Neo4jRecord) => r.get("n")?.properties.id);
       await Promise.all(
         perpetratorCallerIds.map((perpId: string) => repository.setStatus(perpId, ComponentStatus.VICTIM, tx))
       );
@@ -177,12 +206,14 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     // Mark victims that called the new NORMAL node as perpetrators
     const victimCallersResult = await repository.getCallersWithStatus(id, ComponentStatus.VICTIM, tx);
     // TODO mark all old victims as suspicious
-    const victimCallerIds: string[] = victimCallersResult.records.map((r: Record) => r.get("caller")?.properties.id);
+    const victimCallerIds: string[] = victimCallersResult.records.map(
+      (r: Neo4jRecord) => r.get("caller")?.properties.id
+    );
 
     // For cases with cycles, perps might be calling the used-to-be-perp node too
     const perpCallersResult = await repository.getPerpetratorChain(id, tx);
     // TODO mark all old victims as suspicious
-    const perpCallerIds: string[] = perpCallersResult.records.map((r: Record) => r.get("n")?.properties.id);
+    const perpCallerIds: string[] = perpCallersResult.records.map((r: Neo4jRecord) => r.get("n")?.properties.id);
 
     const otherChanges: Change[] = (
       await Promise.all(
@@ -441,6 +472,8 @@ export async function getFullGraph(): Promise<any> {
   const resultNodeIds: string[] = (await repository.getFullGraph()).records.map(
     (r: any) => r.get("resultNode")?.properties.id
   );
-  const components = await Promise.all(resultNodeIds.map((id: string) => repository.getComponent(id)));
+  const components = (
+    await Promise.all(resultNodeIds.map((id: string) => repository.getComponent(id)))
+  ).map((c: Component) => Object.assign(c, { dependencies: Array.from(c.dependencies) }));
   return keyBy(components, "id");
 }

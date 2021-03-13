@@ -1,17 +1,22 @@
 import { ComponentStatus } from "./types";
 
-function isAnomalous(s: ComponentStatus): boolean {
-  return [ComponentStatus.CONFIRMED, ComponentStatus.VICTIM, ComponentStatus.PERPETRATOR].includes(s);
-}
+const anomalousStates = new Set([ComponentStatus.CONFIRMED, ComponentStatus.VICTIM, ComponentStatus.PERPETRATOR]);
 
-const isAnomalousCypher = `
-  CASE callee.status
-  WHEN "CONFIRMED" THEN "Abnormal"
-  WHEN "VICTIM" THEN "Abnormal"
-  WHEN "PERPETRATOR" THEN "Abnormal"
-  ELSE "${ComponentStatus.NORMAL}"
-  END
-`;
+function isAnomalous(s: ComponentStatus): boolean {
+  return anomalousStates.has(s);
+}
+const abnormalStatusMappings = `${Array.from(anomalousStates)
+  .map((s: string) => `WHEN "${s}" then "Abnormal"`)
+  .join("\n")}`;
+
+function isAnomalousCypher(statusVarName: string): string {
+  return `
+    CASE ${statusVarName}
+      ${abnormalStatusMappings}
+      ELSE "${ComponentStatus.NORMAL}"
+    END
+  `;
+}
 
 function isNormal(s: ComponentStatus): boolean {
   return !isAnomalous(s);
