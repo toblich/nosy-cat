@@ -1,6 +1,7 @@
 import { consume } from "./kafka-integration";
 import { logger, createZipkinContextTracer, ZipkinSpan, ComponentHistoricMetrics, Producer } from "helpers";
 import { processRequest } from "./metrics";
+import InfluxRepository from "./influxRepository";
 
 const { tracer } = createZipkinContextTracer("metrics-processor");
 
@@ -8,6 +9,7 @@ if (!process.env.REDIS_HOST) {
   throw Error("Missing Redis Host value");
 }
 
+const influxRepository = new InfluxRepository();
 consume(tracer, "ingress", onEachMessage);
 
 // ---
@@ -54,6 +56,9 @@ async function onEachMessage(producer: Producer, args: any): Promise<void> {
     logger.info("Not posting anything, as there is no relevant info");
     return;
   }
+
+  logger.info(`Writing metrics to Influx: ${JSON.stringify(componentHistoricMetrics, null, 4)}`);
+  influxRepository.writeBatch(componentHistoricMetrics);
 
   logger.info(`Posting message to Kafka: ${JSON.stringify(componentHistoricMetrics, null, 4)}`);
 

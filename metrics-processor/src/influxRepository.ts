@@ -24,7 +24,7 @@ export default class InfluxRepository {
       writeSuccess: (lines: string[]) => {
         logger.debug(`Successfully wrote ${lines.length} lines to Influx :)`);
       },
-      flushInterval: parseInt(process.env.INFLUX_FLUSH_INTERVAL_MS, 10),
+      flushInterval: parseInt(process.env.INFLUX_FLUSH_INTERVAL_MS || "60000", 10),
     });
     this.writeBatch(this.buffer);
   }

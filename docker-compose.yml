@@ -17,7 +17,7 @@ x-base-environment: &base-environment
   GRAPH_PORT: "4000"
   DOCKER_INFLUXDB_INIT_ORG: nosy-cat
   DOCKER_INFLUXDB_INIT_BUCKET: default
-  INFLUXDB_HOST: http://influxdb:8086
+  INFLUX_URL: http://influxdb:8086
   INFLUX_TOKEN_FILEPATH: &influx-token-filepath /influxdb-token.json
   ACCEPTED_STD_DEVIATIONS: 3
 
@@ -90,7 +90,10 @@ services:
     depends_on:
       - kafka
       - redis
-    environment: *base-environment
+    environment:
+      <<: *base-environment
+      INFLUX_FLUSH_INTERVAL_MS: 10000
+      TIME_UNIT_IN_MS: 10000
     networks:
       - default
 
@@ -250,10 +253,13 @@ services:
     image: influxdb:2.0
     environment:
       <<: *base-environment
+      DOCKER_INFLUXDB_INIT_MODE: setup
       DOCKER_INFLUXDB_INIT_USERNAME: nosy-cat
       DOCKER_INFLUXDB_INIT_PASSWORD: tobi&joni
+      STARTUP_SCRIPT_LOGFILE: /home/influxdb/setup.log # Must be writable by influxdb user
     volumes:
       - *influx-token-volume
+      - "./metrics-processor/src/influx-setup.sh:/docker-entrypoint-initdb.d/setup.sh"
     ports:
       - "8086:8086"
     networks:

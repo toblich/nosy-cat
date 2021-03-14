@@ -5,7 +5,7 @@ import { map, mapValues } from "lodash";
 import { EWMA, EWMAStdDeviation } from "./ewma";
 import { inspect } from "util";
 
-const MIN_IN_MS = 10000; // TODO 1 min in milliseconds
+const MIN_IN_MS = parseInt(process.env.TIME_UNIT_IN_MIST || "60000", 10);
 const DELIM = ":";
 const TTL_BUFFER = 60 * 10; // 10 mins
 const TTL_LOCKS = 1000; // in ms, as this is for redlock and not plain redis
