@@ -17,7 +17,6 @@ x-base-environment: &base-environment
   GRAPH_PORT: "4000"
   DOCKER_INFLUXDB_INIT_ORG: nosy-cat
   DOCKER_INFLUXDB_INIT_BUCKET: default
-  INFLUX_URL: http://influxdb:8086
   INFLUX_TOKEN_FILEPATH: &influx-token-filepath /influxdb-token.json
   ACCEPTED_STD_DEVIATIONS: 3
 
@@ -94,6 +93,8 @@ services:
       <<: *base-environment
       INFLUX_FLUSH_INTERVAL_MS: 10000
       TIME_UNIT_IN_MS: 10000
+      USE_INFLUX: "true"
+      INFLUX_URL: http://influxdb:8086
     networks:
       - default
 

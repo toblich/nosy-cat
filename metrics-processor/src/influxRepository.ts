@@ -3,7 +3,11 @@ import { ComponentHistoricMetrics, HistoricMetric, logger } from "helpers";
 
 const ACCEPTED_STD_DEVIATIONS = parseInt(process.env.ACCEPTED_STD_DEVIATIONS, 10);
 
-export default class InfluxRepository {
+interface MetricsRepository {
+  writeBatch(_: ComponentHistoricMetrics[]): void;
+}
+
+class InfluxRepository implements MetricsRepository {
   private influxWriter: WriteApi;
   private buffer: ComponentHistoricMetrics[];
 
@@ -69,3 +73,10 @@ export default class InfluxRepository {
     );
   }
 }
+
+class NoopRepository implements MetricsRepository {
+  constructor() {} // tslint:disable-line no-empty
+  public writeBatch(_: ComponentHistoricMetrics[]): void {} // tslint:disable-line no-empty
+}
+
+export default process.env.USE_INFLUX === "true" ? InfluxRepository : NoopRepository;
