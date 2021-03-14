@@ -260,7 +260,8 @@ services:
       STARTUP_SCRIPT_LOGFILE: /home/influxdb/setup.log # Must be writable by influxdb user
     volumes:
       - *influx-token-volume
-      - "./metrics-processor/src/influx-setup.sh:/docker-entrypoint-initdb.d/setup.sh"
+      - "./influxdb/setup.sh:/docker-entrypoint-initdb.d/setup.sh"
+      - "./influxdb/template.yml:/home/influxdb/template.yml"
     ports:
       - "8086:8086"
     networks:

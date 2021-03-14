@@ -16,6 +16,8 @@ echo "{\"influx\": \"$TOKEN\"}" > $INFLUX_TOKEN_FILEPATH
 
 echo "wrote token" >> $STARTUP_SCRIPT_LOGFILE
 
+influx apply -o $DOCKER_INFLUXDB_INIT_ORG -f /home/influxdb/template.yml --force true
+
 echo 'Done!' >> $STARTUP_SCRIPT_LOGFILE
 
 echo "Successfully ran setup script"

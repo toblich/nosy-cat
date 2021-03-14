@@ -1,0 +1,76 @@
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+    name: inspiring-kilby-b04001
+spec:
+    name: default
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Variable
+metadata:
+    name: nifty-faraday-b04005
+spec:
+    name: metric
+    type: constant
+    values:
+      - throughput
+      - meanResponseTimeMs
+      - errorRate
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Variable
+metadata:
+    name: rightful-shannon-b04003
+spec:
+    name: component
+    selected:
+      - xapi
+    type: constant
+    values:
+      - xapi
+      - iam
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Dashboard
+metadata:
+    name: quirky-montalcini-f04001
+spec:
+    charts:
+      - axes:
+          - base: "10"
+            name: x
+            scale: linear
+          - base: "10"
+            name: y
+            scale: linear
+        colors:
+          - hex: '#31C0F6'
+            id: 44a8fc7f-b896-4eab-867d-583eb897e3b9
+            name: Nineteen Eighty Four
+            type: scale
+          - hex: '#A500A5'
+            id: 7478678a-47df-414b-8cc9-2644018f7e4b
+            name: Nineteen Eighty Four
+            type: scale
+          - hex: '#FF7E27'
+            id: 6fde146a-d471-49e4-b9ac-739e40af100f
+            name: Nineteen Eighty Four
+            type: scale
+        geom: line
+        height: 6
+        kind: Xy
+        name: Name this Cell
+        position: overlaid
+        queries:
+          - query: |-
+                from(bucket: "default")
+                  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+                  |> filter(fn: (r) => r["component"] == v.component)
+                  |> filter(fn: (r) => r["_measurement"] == v.metric)
+                  |> filter(fn: (r) => r["_field"] == "value" or r["_field"] == "upperThreshold" or r["_field"] == "lowerThreshold")
+                  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)
+                  |> yield(name: "last")
+        width: 12
+        xCol: _time
+        yCol: _value
+    name: Metrics
