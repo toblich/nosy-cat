@@ -12,7 +12,11 @@ TOKEN=`influx auth create -o $DOCKER_INFLUXDB_INIT_ORG -d 'nosy-cat/metrics-proc
 
 echo "created token" >> $STARTUP_SCRIPT_LOGFILE
 
-echo "{\"influx\": \"$TOKEN\"}" > $INFLUX_TOKEN_FILEPATH
+echo "{
+  \"_comment\": \"THIS IS AN AUTO-GENERATED FILE AND SHOULD NOT BE MANUALLY MODIFIED. See ./influxdb/setup.sh\",
+  \"influx\": \"$TOKEN\"
+}
+" > $INFLUX_TOKEN_FILEPATH
 
 echo "wrote token" >> $STARTUP_SCRIPT_LOGFILE
 
