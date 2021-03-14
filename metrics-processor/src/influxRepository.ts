@@ -64,7 +64,7 @@ class InfluxRepository implements MetricsRepository {
     return metrics.map(({ name, latest, historicAvg, historicStdDev, timestampMs }: HistoricMetric) =>
       new Point(name)
         .tag("component", component)
-        .floatField("value", latest)
+        .floatField("observed", latest)
         .floatField("historicAvg", historicAvg)
         .floatField("historicStdDev", historicStdDev)
         .floatField("lowerThreshold", historicAvg - ACCEPTED_STD_DEVIATIONS * historicStdDev)
