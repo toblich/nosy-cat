@@ -59,6 +59,7 @@ export interface ComponentCallMetrics {
 }
 
 export interface HistoricMetric {
+  timestampMs: number;
   name: string;
   latest: number;
   historicAvg: number;

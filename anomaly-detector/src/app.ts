@@ -26,7 +26,7 @@ const graphClient = generateGraphClient(`http://${process.env.GRAPH_HOST}:${proc
 
 // ---
 
-const ACCEPTED_STD_DEVIATIONS = 3;
+const ACCEPTED_STD_DEVIATIONS = parseInt(process.env.ACCEPTED_STD_DEVIATIONS || "3", 10);
 
 export async function processComponentCall(
   producer: Producer,
