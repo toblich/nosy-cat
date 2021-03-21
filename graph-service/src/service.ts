@@ -16,7 +16,6 @@ export interface Node {
   dependencies: string[];
   depsSet: Set<string>;
   status: ComponentStatus;
-  // TODO include and shape metrics here
 }
 
 //////////////////////////
@@ -117,7 +116,6 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
 
     if (wasNormal === isNormal) {
       if (transitionCounter !== 0) {
-        // TODO if occurrences != 0, this should reset the occurrences.
         logger.debug(`Abort transitioning for component ${id}`);
         await repository.setTransitionCounter(id, 0, tx);
         return {}; // There was no status change
@@ -137,7 +135,6 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
       return {}; // There was no status change
     }
 
-    // TODO Do Root Cause Detection here
     await repository.setStatus(id, newStatus, tx, { resetCounter: true });
     logger.debug(`isNormal: ${isNormal}`);
     const initialNodeChange: Change = { id, from: { status: currentStatus }, to: { status: newStatus } };
@@ -166,14 +163,12 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     // Changing from some abnormal status to NORMAL
     // Mark victims that called the new NORMAL node as perpetrators
     const victimCallersResult = await repository.getCallersWithStatus(id, ComponentStatus.VICTIM, tx);
-    // TODO mark all old victims as suspicious
     const victimCallerIds: string[] = victimCallersResult.records.map(
       (r: Neo4jRecord) => r.get("caller")?.properties.id
     );
 
     // For cases with cycles, perps might be calling the used-to-be-perp node too
     const perpCallersResult = await repository.getPerpetratorChain(id, tx);
-    // TODO mark all old victims as suspicious
     const perpCallerIds: string[] = perpCallersResult.records.map((r: Neo4jRecord) => r.get("n")?.properties.id);
 
     const otherChanges: Change[] = (
@@ -268,7 +263,6 @@ async function transact<T>(fn: (tx: Transaction) => Promise<T>): Promise<T> {
 }
 
 async function toEntity(initialId: string, nodes: Node[], tx?: Transaction): Promise<Dictionary<Node>> {
-  // TODO add and shape metrics
   const ids = [initialId, ...nodes.map((n: Node) => n.id)];
   const relationships = await repository.getDependenciesBetween(ids, tx);
   const nodesById = keyBy(nodes, "id");
