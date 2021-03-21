@@ -11,12 +11,12 @@ x-base-service: &base-service
   build:
     context: .
   volumes:
-      - "./routers:/project/app/routers"
-      - "./nodemon.json:/project/app/nodemon.json"
-      - "./tsconfig.json:/project/app/tsconfig.json"
-      - "./recorder.ts:/project/app/recorder.ts"
-      - "./server.ts:/project/app/server.ts"
-      - "./servicesFetch.ts:/project/app/servicesFetch.ts"
+    - "./routers:/project/app/routers"
+    - "./nodemon.json:/project/app/nodemon.json"
+    - "./tsconfig.json:/project/app/tsconfig.json"
+    - "./recorder.ts:/project/app/recorder.ts"
+    - "./server.ts:/project/app/server.ts"
+    - "./servicesFetch.ts:/project/app/servicesFetch.ts"
   networks: *base-networks
 
 services:
@@ -64,6 +64,8 @@ services:
   postgres:
     image: postgres:11
     networks: *base-networks
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
 
 networks:
   nosy-cat_nosy-cat:

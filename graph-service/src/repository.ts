@@ -1,6 +1,6 @@
 import { logger, ComponentStatus as STATUS, status as statusUtils } from "helpers";
 import * as neo4j from "neo4j-driver";
-import { Component } from "./Graph";
+import { Component } from "./Component";
 import { Request } from "express";
 import { inspect } from "util";
 
@@ -155,7 +155,13 @@ export default class Repository {
 
     const props: any = node.properties; // TODO this is a negrada
 
-    return new Component(props.id, new Set(dependencies), new Set(), props.status, props.transition_counter);
+    return {
+      id: props.id,
+      dependencies: new Set(dependencies),
+      consumers: new Set(),
+      status: props.status,
+      transitionCounter: props.transition_counter,
+    };
   }
 
   public async setStatus(

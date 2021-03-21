@@ -1,4 +1,4 @@
-export const GAMMA = 0.3;
+export const GAMMA = 0.1;
 
 /**
  * Calculates the EWMA at a time T, given the EWMA value at time T - 1 and the measure at time T

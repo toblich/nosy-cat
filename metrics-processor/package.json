@@ -13,6 +13,7 @@
   "author": "",
   "license": "BSD-3-Clause",
   "dependencies": {
+    "@influxdata/influxdb-client": "^1.11.0",
     "helpers": "file:../helpers",
     "lodash": "^4.17.15",
     "redlock": "^4.1.0",
