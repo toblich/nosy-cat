@@ -10,7 +10,7 @@ const defaultTestMetrics = Object.freeze({
   timestamp: Date.now(),
 });
 
-const { CONFIRMED, PERPETRATOR, VICTIM, NORMAL } = ComponentStatus;
+const { CONFIRMED, PERPETRATOR, VICTIM, NORMAL, INITIALIZING } = ComponentStatus;
 
 let _testCounter = 0; // This is just a hack so that Jest report does not bundle together things that shouldn't
 
@@ -28,14 +28,6 @@ describe("new tests", () => {
   describe("when not using transition thresholds", () => {
     beforeAll(() => {
       graphService.setTransitioningThresholds({ [NORMAL]: 1, [CONFIRMED]: 1 });
-    });
-
-    describe("single-node graph (A)", () => {
-      initialize({ A: [] });
-      test("A", NORMAL, {});
-      test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
-      test("A", CONFIRMED, {});
-      test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
     });
 
     describe("single-node graph (A)", () => {
@@ -445,6 +437,16 @@ describe("new tests", () => {
       graphService.setTransitioningThresholds({ [NORMAL]: 3, [CONFIRMED]: 3 });
     });
 
+    describe("single-node graph (A) with initializing state", () => {
+      initialize({ A: [] }, false);
+      test("A", NORMAL, {});
+      test("A", NORMAL, {});
+      test("A", NORMAL, {});
+      test("A", NORMAL, {});
+      test("A", NORMAL, {});
+      test("A", NORMAL, change("A", INITIALIZING, NORMAL));
+    });
+
     describe("single-node graph (A)", () => {
       initialize({ A: [] });
       test("A", NORMAL, {}); // Counter 0
@@ -481,7 +483,7 @@ describe("new tests", () => {
 
   // ---
 
-  function initialize(graph: Dictionary<string[]>): void {
+  function initialize(graph: Dictionary<string[]>, isServiceReady: boolean = true): void {
     _testCounter = 0;
     beforeAll(async () => {
       await graphService.clear();
@@ -491,7 +493,7 @@ describe("new tests", () => {
           : callees.map((callee: string) => ({ caller, callee, metrics: defaultTestMetrics }));
       });
       try {
-        await graphService.add([...componentCalls], true);
+        await graphService.add([...componentCalls], isServiceReady);
       } catch (error) {
         throw Error(`There was an error while adding the component calls, ${error.stack}`);
       }
