@@ -1,20 +1,8 @@
 import { inspect } from "util";
-import * as httpErrors from "http-errors";
 
 import { keyBy, flatMap, takeRightWhile, uniqBy, pickBy } from "lodash";
 
-import {
-  Component as HelperComponent,
-  ComponentStatus,
-  ComponentPlainObject,
-  ComponentCall,
-  Dictionary,
-  UINode,
-  UIEdge,
-  UIGraph,
-  status,
-  logger,
-} from "helpers";
+import { ComponentStatus, ComponentCall, Dictionary, status, logger } from "helpers";
 
 import Repository, { Result, Record as Neo4jRecord, Transaction } from "./repository";
 import { Component } from "./Graph";
@@ -41,6 +29,7 @@ export interface Node {
 const repository = new Repository();
 
 const DEFAULT_TRANSITIONING_THRESHOLD = 3;
+export const DEFAULT_INITIALIZING_THRESHOLD = 5;
 
 type Thresholds = Record<ComponentStatus.NORMAL | ComponentStatus.CONFIRMED, number>;
 let _thresholds: Thresholds = {
@@ -101,10 +90,10 @@ export async function clear(): Promise<void> {
   return repository.clear();
 }
 
-export async function add(calls: ComponentCall[]): Promise<void> {
+export async function add(calls: ComponentCall[], isServiceReady: boolean = false): Promise<void> {
   return transact(async (tx: Transaction) => {
     for (const { caller, callee } of calls) {
-      await repository.addCall(caller, callee, tx);
+      await repository.addCall(caller, callee, tx, isServiceReady);
     }
   });
 }
@@ -152,6 +141,25 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     const { status: currentStatus, transitionCounter } = await repository.getComponent(id, tx);
     const wasNormal = status.isNormal(currentStatus);
     logger.debug(`Previous Status: ${currentStatus} - newStatus: ${newStatus}`);
+
+    const updatedCounter = transitionCounter + 1;
+
+    if (currentStatus === ComponentStatus.INITIALIZING && transitionCounter < DEFAULT_INITIALIZING_THRESHOLD) {
+      logger.debug(`Incrementing transitionCounter to ${updatedCounter} for ${id}`);
+      await repository.setTransitionCounter(id, updatedCounter, tx);
+      return {}; // There was no status change
+    } else if (transitionCounter === DEFAULT_INITIALIZING_THRESHOLD) {
+      logger.debug(`Set status normal for the ex new node: ${id}`);
+      await repository.setStatus(id, ComponentStatus.NORMAL, tx, { resetCounter: true });
+      return {
+        [id]: {
+          id,
+          from: { status: ComponentStatus.INITIALIZING },
+          to: { status: ComponentStatus.NORMAL },
+        },
+      };
+    }
+
     if (wasNormal === isNormal) {
       if (transitionCounter !== 0) {
         // TODO if occurrences != 0, this should reset the occurrences.
@@ -164,8 +172,6 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
       // There was no change
       return {};
     }
-
-    const updatedCounter = transitionCounter + 1;
 
     const transitionThreshold = wasNormal
       ? _thresholds[ComponentStatus.CONFIRMED]

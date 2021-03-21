@@ -87,8 +87,14 @@ export default class Repository {
     return this.run(`MATCH (x:${Repository.VIRTUAL_NODE}) SET x.flag = 1`, {}, tx);
   }
 
-  public async addCall(caller: string | undefined, callee: string, tx?: Transaction): Promise<Result> {
+  public async addCall(
+    caller: string | undefined,
+    callee: string,
+    tx?: Transaction,
+    isServiceReady: boolean = false
+  ): Promise<Result> {
     logger.debug(`Adding call ${caller}->${callee} ${tx ? tx.debugId : "no-tx"}`);
+    const newServiceStatus = isServiceReady ? STATUS.NORMAL : STATUS.INITIALIZING;
 
     if (!caller) {
       return this.run(
@@ -97,8 +103,8 @@ export default class Repository {
             ON CREATE SET
               callee.id = $callee,
               callee.transition_counter = 0,
-              callee.status = "${STATUS.NORMAL}",
-              callee:${STATUS.NORMAL}
+              callee.status = "${newServiceStatus}",
+              callee:${newServiceStatus}
         `,
         { callee },
         tx
@@ -110,14 +116,14 @@ export default class Repository {
           ON CREATE SET
             caller.id = $caller,
             caller.transition_counter = 0,
-            caller.status = "${STATUS.NORMAL}",
-            caller:${STATUS.NORMAL}
+            caller.status = "${newServiceStatus}",
+            caller:${newServiceStatus}
         MERGE (callee:Component {id: $callee})
           ON CREATE SET
             callee.id = $callee,
             callee.transition_counter = 0,
-            callee.status = "${STATUS.NORMAL}",
-            callee:${STATUS.NORMAL}
+            callee.status = "${newServiceStatus}",
+            callee:${newServiceStatus}
         MERGE (caller)-[r:CALLS]->(callee)
           ON CREATE SET
             r.callee_is = ${statusUtils.isAnomalousCypher("callee.status")},
@@ -209,11 +215,11 @@ export default class Repository {
   public async getPerpetratorChain(id: string, tx?: Transaction): Promise<Result> {
     return this.run(
       `
-      MATCH (y:Component:PERPETRATOR)-[]->(x :Component {id: $id})
-      OPTIONAL MATCH (caller:Component:PERPETRATOR)-[* {callee_status:"PERPETRATOR"}]->(y)
-      WITH collect(y)+collect(caller) as nodes
-      UNWIND nodes as n
-      RETURN n
+        MATCH (y:Component:PERPETRATOR)-[]->(x :Component {id: $id})
+        OPTIONAL MATCH (caller:Component:PERPETRATOR)-[* {callee_status:"PERPETRATOR"}]->(y)
+        WITH collect(y)+collect(caller) as nodes
+        UNWIND nodes as n
+        RETURN n
       `,
       { id },
       tx
@@ -223,7 +229,6 @@ export default class Repository {
   public async getCallersWithStatus(id: string, status: STATUS, tx?: Transaction): Promise<Result> {
     return this.run(
       `
-
         MATCH (caller:Component:${status})-[]->(x :Component {id: $id})
         RETURN (caller)
       `,

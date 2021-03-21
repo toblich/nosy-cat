@@ -3,6 +3,7 @@ import { Request } from "express";
 
 export enum ComponentStatus {
   // It is relevant that the enum value equals the enum key
+  INITIALIZING = "INITIALIZING",
   NORMAL = "NORMAL",
   SUSPICIOUS = "SUSPICIOUS",
   CONFIRMED = "CONFIRMED",
