@@ -1,7 +1,7 @@
-import { logger, ComponentStatus as STATUS, status as statusUtils, ComponentStatus } from "helpers";
+import { ComponentStatus, ComponentStatus as STATUS, logger, status as statusUtils } from "helpers";
 import * as neo4j from "neo4j-driver";
-import { Component } from "./Component";
 import { inspect } from "util";
+import { Component } from "./Component";
 
 export type Result = neo4j.QueryResult;
 export type Record = neo4j.Record;

@@ -1,8 +1,7 @@
-import * as graphService from "./service";
-import { ComponentStatus, ComponentCall, Dictionary } from "helpers";
+import { ComponentStatus, Dictionary } from "helpers";
+import { merge } from "lodash";
 import * as neo4j from "neo4j-driver";
-import { before, merge } from "lodash";
-import { DEFAULT_INITIALIZING_THRESHOLD } from "./service";
+import * as graphService from "./service";
 
 const defaultTestMetrics = Object.freeze({
   duration: 1,

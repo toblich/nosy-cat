@@ -1,13 +1,9 @@
-import { Server } from "http";
 import * as express from "express";
-import * as path from "path";
-
-import { logger, createZipkinContextTracer, createZipkinExpress } from "helpers";
+import { createZipkinContextTracer, createZipkinExpress, logger } from "helpers";
+import { Server } from "http";
 import { mapValues } from "lodash";
-
 import * as controller from "./controller";
 import * as middlewares from "./middlewares";
-
 import Repository from "./repository";
 
 const { tracer } = createZipkinContextTracer("graph-service");

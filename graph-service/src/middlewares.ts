@@ -28,7 +28,7 @@ export function globalErrorHandling(err, req, res, _) {
     status,
     name: err.name,
     message: err.message,
-    properties: err.properties || err.stack || {}
+    properties: err.properties || err.stack || {},
   });
 }
 
