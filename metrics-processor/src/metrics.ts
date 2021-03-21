@@ -5,7 +5,7 @@ import { map, mapValues } from "lodash";
 import { EWMA, EWMAStdDeviation } from "./ewma";
 import { inspect } from "util";
 
-const MIN_IN_MS = 10000; // TODO 1 min in milliseconds
+const MIN_IN_MS = parseInt(process.env.TIME_UNIT_IN_MS || "60000", 10);
 const DELIM = ":";
 const TTL_BUFFER = 60 * 10; // 10 mins
 const TTL_LOCKS = 1000; // in ms, as this is for redlock and not plain redis
@@ -65,21 +65,21 @@ export async function processRequest(metadata: RequestMetadata): Promise<Histori
 
   const pattern = join(component, "*");
   logger.debug(`${component}: Checking buffers with pattern "${pattern}"...`);
-  const componentBufferKeys: number[] = (await keys(bufferRedisClient, pattern))
+  const componentBufferKeysTs: number[] = (await keys(bufferRedisClient, pattern))
     .map(prefixRemover(component))
     .map(deserializeTs);
-  logger.debug(`${component}: Existing buffers: ${JSON.stringify(componentBufferKeys)}`);
+  logger.debug(`${component}: Existing buffers: ${JSON.stringify(componentBufferKeysTs)}`);
 
-  const previousBuffersKeys = componentBufferKeys
+  const previousBuffersKeysTs = componentBufferKeysTs
     .filter((ts: number) => ts < minuteTs) // filter previous keys
     .sort((a: number, b: number) => a - b); // and sort temporally ascending
 
-  logger.debug(`${component}: Checking previous buffers ${JSON.stringify(previousBuffersKeys)}...`);
+  logger.debug(`${component}: Checking previous buffers ${JSON.stringify(previousBuffersKeysTs)}...`);
   const historicMetrics = [];
-  for (const ts of previousBuffersKeys) {
+  for (const ts of previousBuffersKeysTs) {
     // cannot be done concurrently as order must be guaranteed and an execution needs
     // to wait for previous ones due to the side-effect of updating the EWMA
-    const historicMetric = await updateEWMAs(component, buildBufferKey(component, ts));
+    const historicMetric = await updateEWMAs(component, ts);
     historicMetrics.push(...historicMetric);
   }
 
@@ -102,7 +102,8 @@ async function updateBuffer(key: string, duration: number, errored: boolean): Pr
   await exec(multi);
 }
 
-async function updateEWMAs(component: string, bufferKey: string): Promise<HistoricMetric[]> {
+async function updateEWMAs(component: string, ts: number): Promise<HistoricMetric[]> {
+  const bufferKey = buildBufferKey(component, ts);
   logger.debug(`${component}: Locking...`);
   const lock = await redlock.lock(component, TTL_LOCKS);
   logger.debug(`${component}: Locked`);
@@ -155,6 +156,7 @@ async function updateEWMAs(component: string, bufferKey: string): Promise<Histor
   return map(metricFields, (field: string) => {
     const avg = +(ewmas[field] || metrics[field]);
     return {
+      timestampMs: ts,
       name: field,
       latest: +metrics[field],
       historicAvg: avg,

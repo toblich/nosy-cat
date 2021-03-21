@@ -10,11 +10,22 @@ x-base-build: &base-build
 x-base-command: &base-command sh -c "npm run start:dockerized"
 x-base-kafka-command: &base-kafka-command sh -c "./wait-for-it.sh $$KAFKA -t 30 -- npm run start:dockerized"
 
+x-influx-token-volume: &influx-token-volume
+  type: volume
+  source: influxdbtoken
+  target: &volume-target /mnt/compose_volume
+  volume:
+    nocopy: true
+
 x-base-environment: &base-environment
   KAFKA: kafka:9093
   REDIS_HOST: redis
   GRAPH_HOST: graph-service
   GRAPH_PORT: "4000"
+  DOCKER_INFLUXDB_INIT_ORG: nosy-cat
+  DOCKER_INFLUXDB_INIT_BUCKET: default
+  INFLUX_TOKEN_FILEPATH: &influx-token-filepath /mnt/compose_volume/influxdb-token.json
+  ACCEPTED_STD_DEVIATIONS: 3
 
 ############
 # SERVICES #
@@ -75,11 +86,19 @@ services:
       - "./helpers/src:/project/helpers/src"
       - "./metrics-processor/tsconfig.json:/project/app/tsconfig.json"
       - "./metrics-processor/src:/project/app/src"
+      - *influx-token-volume
     command: *base-kafka-command
     depends_on:
       - kafka
       - redis
-    environment: *base-environment
+      - volume_init
+      - influxdb
+    environment:
+      <<: *base-environment
+      INFLUX_FLUSH_INTERVAL_MS: 10000
+      TIME_UNIT_IN_MS: 10000
+      USE_INFLUX: "true"
+      INFLUX_URL: http://influxdb:8086
     networks:
       - default
 
@@ -235,8 +254,42 @@ services:
     networks:
       - default
 
+  influxdb:
+    image: influxdb:2.0
+    environment:
+      <<: *base-environment
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: nosy-cat
+      DOCKER_INFLUXDB_INIT_PASSWORD: tobi&joni
+      STARTUP_SCRIPT_LOGFILE: /home/influxdb/setup.log # Must be writable by influxdb user
+    volumes:
+      - *influx-token-volume
+      - "./influxdb/setup.sh:/docker-entrypoint-initdb.d/setup.sh"
+      - "./influxdb/template.yml:/home/influxdb/template.yml"
+    ports:
+      - "8086:8086"
+    depends_on:
+      - volume_init
+    networks:
+      - default
+
+  volume_init:
+    # This service is just a hack to make the named volume not just root-only.
+    # See https://github.com/docker/compose/issues/3270#issuecomment-537763768
+    image: alpine
+    environment:
+      VOLUME_TARGET: *volume-target
+    command: /bin/sh -c "chown -v nobody:nogroup $$VOLUME_TARGET && chmod -v 777 $$VOLUME_TARGET"
+    container_name: volume_init
+    restart: "no"
+    volumes:
+      - *influx-token-volume
+
 networks:
   nosy-cat:
     driver: bridge
   default:
     driver: bridge
+
+volumes:
+  influxdbtoken:

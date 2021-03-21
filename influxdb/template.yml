@@ -1,0 +1,145 @@
+apiVersion: influxdata.com/v2alpha1
+kind: Bucket
+metadata:
+  name: elegant-heisenberg-782001
+spec:
+  name: default
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Variable
+metadata:
+  name: trusting-tharp-782003
+spec:
+  name: component
+  selected:
+    - xapi
+  type: constant
+  values:
+    - xapi
+    - iam
+---
+apiVersion: influxdata.com/v2alpha1
+kind: Dashboard
+metadata:
+  name: infallible-austin-b82001
+spec:
+  charts:
+    - axes:
+        - base: "10"
+          name: x
+          scale: linear
+        - base: "10"
+          name: y
+          scale: linear
+      colors:
+        - hex: "#31C0F6"
+          id: 627bf93c-060f-4279-a42f-e1a545b03cb6
+          name: Nineteen Eighty Four
+          type: scale
+        - hex: "#A500A5"
+          id: 710e044d-9955-4f04-a0e4-af9ae1d33150
+          name: Nineteen Eighty Four
+          type: scale
+        - hex: "#FF7E27"
+          id: 96258964-96a4-43d7-9185-1508535484d3
+          name: Nineteen Eighty Four
+          type: scale
+      geom: line
+      height: 4
+      hoverDimension: x
+      kind: Xy
+      name: Throughput
+      position: overlaid
+      queries:
+        - query: |-
+            from(bucket: "default")
+              |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+              |> filter(fn: (r) => r["component"] == v.component)
+              |> filter(fn: (r) => r["_measurement"] == "throughput")
+              |> filter(fn: (r) => r["_field"] == "observed" or r["_field"] == "upperThreshold" or r["_field"] == "lowerThreshold")
+              |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)
+              |> yield(name: "last")
+      width: 12
+      xCol: _time
+      yCol: _value
+    - axes:
+        - base: "10"
+          name: x
+          scale: linear
+        - base: "10"
+          name: y
+          scale: linear
+          suffix: "%"
+      colors:
+        - hex: "#31C0F6"
+          id: 627bf93c-060f-4279-a42f-e1a545b03cb6
+          name: Nineteen Eighty Four
+          type: scale
+        - hex: "#A500A5"
+          id: 710e044d-9955-4f04-a0e4-af9ae1d33150
+          name: Nineteen Eighty Four
+          type: scale
+        - hex: "#FF7E27"
+          id: 96258964-96a4-43d7-9185-1508535484d3
+          name: Nineteen Eighty Four
+          type: scale
+      geom: line
+      height: 3
+      hoverDimension: x
+      kind: Xy
+      name: Error Rate
+      position: overlaid
+      queries:
+        - query: |-
+            from(bucket: "default")
+              |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+              |> filter(fn: (r) => r["component"] == v.component)
+              |> filter(fn: (r) => r["_measurement"] == "errorRate")
+              |> filter(fn: (r) => r["_field"] == "observed" or r["_field"] == "upperThreshold" or r["_field"] == "lowerThreshold")
+              |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)
+              |> yield(name: "last")
+      width: 12
+      xCol: _time
+      yCol: _value
+      yPos: 4
+    - axes:
+        - base: "10"
+          name: x
+          scale: linear
+        - base: "10"
+          label: ms
+          name: y
+          scale: linear
+      colors:
+        - hex: "#31C0F6"
+          id: 627bf93c-060f-4279-a42f-e1a545b03cb6
+          name: Nineteen Eighty Four
+          type: scale
+        - hex: "#A500A5"
+          id: 710e044d-9955-4f04-a0e4-af9ae1d33150
+          name: Nineteen Eighty Four
+          type: scale
+        - hex: "#FF7E27"
+          id: 96258964-96a4-43d7-9185-1508535484d3
+          name: Nineteen Eighty Four
+          type: scale
+      geom: line
+      height: 3
+      hoverDimension: x
+      kind: Xy
+      name: Mean Response Time
+      position: overlaid
+      queries:
+        - query: |-
+            from(bucket: "default")
+              |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+              |> filter(fn: (r) => r["component"] == v.component)
+              |> filter(fn: (r) => r["_measurement"] == "meanResponseTimeMs")
+              |> filter(fn: (r) => r["_field"] == "observed" or r["_field"] == "upperThreshold" or r["_field"] == "lowerThreshold")
+              |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)
+              |> yield(name: "last")
+      width: 12
+      xCol: _time
+      yCol: _value
+      yPos: 7
+  name: Metrics
