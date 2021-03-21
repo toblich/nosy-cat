@@ -24,7 +24,7 @@ describe("EWMA helpers", () => {
       52.6,
       52.4,
       53.6,
-      52.1
+      52.1,
     ];
 
     beforeAll(() => {
@@ -40,8 +40,8 @@ describe("EWMA helpers", () => {
       result = EWMAStdDeviation(lastEWMASquare, lastEWMA);
     });
 
-    it("should return approx 1.479", () => {
-      expect(result).toBeCloseTo(1.479);
+    it("should return approx 1.790", () => {
+      expect(result).toBeCloseTo(1.79);
     });
   });
 });
