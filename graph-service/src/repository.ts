@@ -1,17 +1,31 @@
 import { ComponentStatus, ComponentStatus as STATUS, logger, status as statusUtils } from "helpers";
 import * as neo4j from "neo4j-driver";
 import { inspect } from "util";
-import { Component } from "./Component";
 
 export type Result = neo4j.QueryResult;
 export type Record = neo4j.Record;
 export type Transaction = neo4j.Transaction & { debugId?: number };
+
+export interface Component {
+  id: string;
+  dependencies: Set<string>;
+  status: ComponentStatus;
+  transitionCounter: number;
+}
 
 interface NodeProperties {
   id: string;
   status: ComponentStatus;
   transition_counter: number;
 }
+
+// Make all nodes have the label Component
+// Then, make them all have another label (or property?) with the status
+// All of them should have a property "id: string"
+// Then, have an index on Component(id)
+// and a constraint on uniqueness of Component(id)
+
+// All relations should have the same relation type - CALLS
 
 export default class Repository {
   private driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"), {

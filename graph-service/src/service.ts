@@ -1,8 +1,7 @@
 import { ComponentCall, ComponentStatus, Dictionary, logger, status } from "helpers";
 import { flatMap, keyBy, pickBy, takeRightWhile, uniqBy } from "lodash";
 import { inspect } from "util";
-import { Component } from "./Component";
-import Repository, { Record as Neo4jRecord, Result, Transaction } from "./repository";
+import Repository, { Component, Record as Neo4jRecord, Result, Transaction } from "./repository";
 
 //////////////////////
 // --- Types ---
