@@ -2,6 +2,7 @@ import * as graphService from "./graphService";
 import { ComponentStatus, ComponentCall, Dictionary } from "helpers";
 import * as neo4j from "neo4j-driver";
 import { before, merge } from "lodash";
+import { DEFAULT_INITIALIZING_THRESHOLD } from "./graphService";
 
 const defaultTestMetrics = Object.freeze({
   duration: 1,
@@ -27,6 +28,14 @@ describe("new tests", () => {
   describe("when not using transition thresholds", () => {
     beforeAll(() => {
       graphService.setTransitioningThresholds({ [NORMAL]: 1, [CONFIRMED]: 1 });
+    });
+
+    describe("single-node graph (A)", () => {
+      initialize({ A: [] });
+      test("A", NORMAL, {});
+      test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+      test("A", CONFIRMED, {});
+      test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
     });
 
     describe("single-node graph (A)", () => {
@@ -482,7 +491,7 @@ describe("new tests", () => {
           : callees.map((callee: string) => ({ caller, callee, metrics: defaultTestMetrics }));
       });
       try {
-        await graphService.add([...componentCalls]);
+        await graphService.add([...componentCalls], true);
       } catch (error) {
         throw Error(`There was an error while adding the component calls, ${error.stack}`);
       }

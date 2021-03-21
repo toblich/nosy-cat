@@ -35,7 +35,7 @@ export async function processComponentCall(
   logger.debug(`componentMetrics: ${JSON.stringify(componentMetrics, null, 2)}`);
 
   const componentId = componentMetrics.component;
-  const component = (await graphClient.getService(componentId)).body; // TODO replace with direct Neo4J Cipher query
+  const component = (await graphClient.getService(componentId)).body;
   logger.debug(`component: ${JSON.stringify(component, null, 2)}`);
 
   const errorMessages = componentMetrics.metrics
@@ -68,21 +68,13 @@ export async function processComponentCall(
   const serviceIsBackToNormal = wasServiceAnomalous(component.status) && !hasErrored;
   logger.debug(`serviceIsBackToNormal: ${serviceIsBackToNormal}`);
 
-  if (serviceIsBackToNormal) {
-    await graphClient.updateServiceMetrics(component.id, ComponentStatus.NORMAL);
-  }
+  const response = (
+    await graphClient.updateServiceMetrics(
+      component.id,
+      hasErrored ? ComponentStatus.CONFIRMED : ComponentStatus.NORMAL
+    )
+  ).body;
 
-  if (!hasErrored) {
-    return;
-  }
-
-  const serviceIsStillAnomalous = wasServiceAnomalous(component.status) && hasErrored;
-
-  if (serviceIsStillAnomalous) {
-    return;
-  }
-
-  const response = (await graphClient.updateServiceMetrics(component.id, ComponentStatus.CONFIRMED)).body; // TODO replace with direct Neo4J Cipher query
   const newServiceStatus = response[component.id] && response[component.id].to.status;
   if (newServiceStatus === ComponentStatus.PERPETRATOR) {
     await producer.send({
