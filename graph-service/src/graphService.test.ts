@@ -440,11 +440,11 @@ describe("new tests", () => {
     describe("single-node graph (A) with initializing state", () => {
       initialize({ A: [] }, false);
       test("A", NORMAL, {});
+      test("A", CONFIRMED, {});
       test("A", NORMAL, {});
       test("A", NORMAL, {});
       test("A", NORMAL, {});
-      test("A", NORMAL, {});
-      test("A", NORMAL, change("A", INITIALIZING, NORMAL));
+      test("A", CONFIRMED, change("A", INITIALIZING, NORMAL));
     });
 
     describe("single-node graph (A)", () => {
