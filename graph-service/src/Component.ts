@@ -11,7 +11,6 @@ import { ComponentStatus } from "helpers";
 export interface Component {
   id: string;
   dependencies: Set<string>;
-  consumers: Set<string>; // TODO consider removing this
   status: ComponentStatus;
   transitionCounter: number;
 }

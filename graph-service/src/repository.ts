@@ -1,12 +1,17 @@
-import { logger, ComponentStatus as STATUS, status as statusUtils } from "helpers";
+import { logger, ComponentStatus as STATUS, status as statusUtils, ComponentStatus } from "helpers";
 import * as neo4j from "neo4j-driver";
 import { Component } from "./Component";
-import { Request } from "express";
 import { inspect } from "util";
 
 export type Result = neo4j.QueryResult;
 export type Record = neo4j.Record;
 export type Transaction = neo4j.Transaction & { debugId?: number };
+
+interface NodeProperties {
+  id: string;
+  status: ComponentStatus;
+  transition_counter: number;
+}
 
 export default class Repository {
   private driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"), {
@@ -140,7 +145,6 @@ export default class Repository {
    * getComponent s
    */
   public async getComponent(id: string, tx?: Transaction): Promise<Component> {
-    // TODO this is not fully a Component
     const result = await this.run(
       `MATCH (component:Component {id: $id})
       OPTIONAL MATCH (component)-[]->(v:Component)
@@ -153,12 +157,11 @@ export default class Repository {
     const node: neo4j.Node = result.records[0].get("component");
     const dependencies = result.records.map((x: neo4j.Record) => x.get("v")?.properties.id).filter((s: string) => s);
 
-    const props: any = node.properties; // TODO this is a negrada
+    const props = node.properties as NodeProperties;
 
     return {
       id: props.id,
       dependencies: new Set(dependencies),
-      consumers: new Set(),
       status: props.status,
       transitionCounter: props.transition_counter,
     };
