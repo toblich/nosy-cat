@@ -26,21 +26,21 @@ const processSpan = (span: ZipkinSpan): ComponentCall => {
   const metrics = {
     duration: span.duration,
     errored,
-    timestamp: span.timestamp
+    timestamp: span.timestamp,
   };
 
   if (span.kind === "SERVER") {
     return {
       callee: localEndpointName,
       caller: remoteEndpointName,
-      metrics
+      metrics,
     };
   }
 
   return {
     callee: remoteEndpointName,
     caller: localEndpointName,
-    metrics
+    metrics,
   };
 };
 
@@ -65,14 +65,14 @@ async function onEachMessage(producer: Producer, args: any): Promise<void> {
 
   try {
     await graphClient.postComponentCalls(componentCalls);
-    await producer.send({
-      topic: "dependency-detector",
-      messages: [
-        {
-          value: JSON.stringify(componentCalls)
-        }
-      ]
-    });
+    // await producer.send({
+    //   topic: "dependency-detector",
+    //   messages: [
+    //     {
+    //       value: JSON.stringify(componentCalls)
+    //     }
+    //   ]
+    // });
   } catch (error) {
     logger.error(error);
   }
