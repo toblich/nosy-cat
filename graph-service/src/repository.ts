@@ -2,7 +2,7 @@ import { ComponentStatus, ComponentStatus as STATUS, logger, status as statusUti
 import * as neo4j from "neo4j-driver";
 import { inspect } from "util";
 
-export type Result = neo4j.QueryResult;
+type Result = neo4j.QueryResult;
 export type Record = neo4j.Record;
 export type Transaction = neo4j.Transaction & { debugId?: number };
 
@@ -111,12 +111,12 @@ export default class Repository {
     callee: string,
     tx?: Transaction,
     isServiceReady: boolean = false
-  ): Promise<Result> {
+  ): Promise<void> {
     logger.debug(`Adding call ${caller}->${callee} ${tx ? tx.debugId : "no-tx"}`);
     const newServiceStatus = isServiceReady ? STATUS.NORMAL : STATUS.INITIALIZING;
 
     if (!caller) {
-      return this.run(
+      await this.run(
         `
           MERGE (callee:Component {id: $callee})
             ON CREATE SET
@@ -128,8 +128,10 @@ export default class Repository {
         { callee },
         tx
       );
+      return;
     }
-    return this.run(
+
+    await this.run(
       `
         MERGE (caller:Component {id: $caller})
           ON CREATE SET
@@ -186,13 +188,13 @@ export default class Repository {
     status: STATUS,
     tx?: Transaction,
     opts: { resetCounter?: boolean } = { resetCounter: false }
-  ): Promise<Result> {
+  ): Promise<void> {
     if (!STATUS[status]) {
       logger.warn(`Trying to set invalid status (id: ${id}, status: ${status}, tx: ${tx ? tx.debugId : "no-tx"})`);
       throw Error("InvalidStatus");
     }
     logger.debug(`Setting status ${id} ${status} (${tx ? `tx:${tx.debugId}` : "no-tx"})`);
-    return this.run(
+    await this.run(
       `
         MATCH (x :Component {id: $id})
         REMOVE ${Object.values(STATUS)
@@ -211,8 +213,8 @@ export default class Repository {
     );
   }
 
-  public async setTransitionCounter(id: string, value: number, tx?: Transaction): Promise<Result> {
-    return this.run(
+  public async setTransitionCounter(id: string, value: number, tx?: Transaction): Promise<void> {
+    await this.run(
       `
         MATCH (x :Component {id: $id})
         SET x.transition_counter = $value
@@ -222,8 +224,9 @@ export default class Repository {
     );
   }
 
-  public async getAbnormalChain(initialId: string, tx?: Transaction): Promise<Result> {
-    return this.run(
+  public async getAbnormalChain(initialId: string, tx?: Transaction): Promise<any> {
+    // TODO types
+    const result = await this.run(
       `
         MATCH (caller:Component:Abnormal {id: $initialId})
         OPTIONAL MATCH (caller)-[* {callee_is: "Abnormal"}]->(resultNode :Component:Abnormal)
@@ -233,10 +236,22 @@ export default class Repository {
       { initialId },
       tx
     );
+
+    if (result.records.length === 0) {
+      // Caller is not abnormal, so there is no causal chain whatsoever
+      return [];
+    }
+
+    const caller = result.records[0].get("caller").properties as NodeProperties;
+    const tail = result.records
+      .map((r: Record) => r.get("resultNode")?.properties)
+      .filter((n: NodeProperties | null) => n);
+
+    return [caller, ...tail];
   }
 
-  public async getPerpetratorChain(id: string, tx?: Transaction): Promise<Result> {
-    return this.run(
+  public async getPerpetratorIDsChain(id: string, tx?: Transaction): Promise<string[]> {
+    const result = await this.run(
       `
         MATCH (y:Component:PERPETRATOR)-[]->(x :Component {id: $id})
         OPTIONAL MATCH (caller:Component:PERPETRATOR)-[* {callee_status:"PERPETRATOR"}]->(y)
@@ -247,10 +262,12 @@ export default class Repository {
       { id },
       tx
     );
+
+    return result.records.map((r: Record) => r.get("n")?.properties.id);
   }
 
-  public async getCallersWithStatus(id: string, status: STATUS, tx?: Transaction): Promise<Result> {
-    return this.run(
+  public async getCallerIDsWithStatus(id: string, status: STATUS, tx?: Transaction): Promise<string[]> {
+    const result = await this.run(
       `
         MATCH (caller:Component:${status})-[]->(x :Component {id: $id})
         RETURN (caller)
@@ -258,6 +275,8 @@ export default class Repository {
       { id },
       tx
     );
+
+    return result.records.map((r: Record) => r.get("caller")?.properties.id);
   }
 
   public async getDependenciesBetween(
@@ -279,8 +298,9 @@ export default class Repository {
     }));
   }
 
-  public async getFullGraph(tx?: Transaction): Promise<Result> {
-    return this.run(`MATCH (resultNode :Component) RETURN DISTINCT resultNode`, {}, tx);
+  public async getAllIDs(tx?: Transaction): Promise<string[]> {
+    const result = await this.run(`MATCH (resultNode :Component) RETURN DISTINCT resultNode`, {}, tx);
+    return result.records.map((r: any) => r.get("resultNode")?.properties.id);
   }
 
   public async clear(): Promise<void> {

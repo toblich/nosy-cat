@@ -1,7 +1,7 @@
 import { ComponentCall, ComponentStatus, Dictionary, logger, status } from "helpers";
 import { flatMap, keyBy, pickBy, takeRightWhile, uniqBy } from "lodash";
 import { inspect } from "util";
-import Repository, { Component, Record as Neo4jRecord, Result, Transaction } from "./repository";
+import Repository, { Component, Transaction } from "./repository";
 
 //////////////////////
 // --- Types ---
@@ -52,30 +52,9 @@ export async function search(id: string): Promise<Component> {
   return repository.getComponent(id);
 }
 
-export async function findCausalChain(initialId: string, tx?: Transaction): Promise<Node[]> {
-  const result = await repository.getAbnormalChain(initialId, tx);
-
-  if (result.records.length === 0) {
-    // Caller is not abnormal, so there is no causal chain whatsoever
-    return [];
-  }
-
-  // TODO consider moving logic into repository
-  const caller = result.records[0].get("caller").properties;
-  const tail = result.records.map((r: Neo4jRecord) => r.get("resultNode")?.properties).filter((n: Node | null) => n);
-
-  logger.warn("CHAIN " + inspect([caller, ...tail]));
-
-  return [caller, ...tail];
-}
-
-export async function findRootCauses(initialId: string): Promise<Node[]> {
-  const abnormalSubgraph = await transact(async (tx: Transaction) => {
-    const chain = await findCausalChain(initialId, tx);
-    return chain.length === 0 ? {} : await toEntity(initialId, chain, tx);
-  });
-
-  return findEnds(initialId, abnormalSubgraph);
+async function getAbnormalSubgraph(initialId: string, tx?: Transaction): Promise<Dictionary<Node>> {
+  const chain = await repository.getAbnormalChain(initialId, tx);
+  return chain.length === 0 ? {} : await toGraph(initialId, chain, tx);
 }
 
 export interface Change {
@@ -138,8 +117,7 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
     // Changing from NORMAL to CONFIRMED
     if (!isNormal) {
       // Mark perpetrators that called the new CONFIRMED node as victims
-      const perpetratorCallersResult = await repository.getPerpetratorChain(id, tx);
-      const perpetratorCallerIds = perpetratorCallersResult.records.map((r: Neo4jRecord) => r.get("n")?.properties.id);
+      const perpetratorCallerIds = await repository.getPerpetratorIDsChain(id, tx);
       await Promise.all(
         perpetratorCallerIds.map((perpId: string) => repository.setStatus(perpId, ComponentStatus.VICTIM, tx))
       );
@@ -158,14 +136,10 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
 
     // Changing from some abnormal status to NORMAL
     // Mark victims that called the new NORMAL node as perpetrators
-    const victimCallersResult = await repository.getCallersWithStatus(id, ComponentStatus.VICTIM, tx);
-    const victimCallerIds: string[] = victimCallersResult.records.map(
-      (r: Neo4jRecord) => r.get("caller")?.properties.id
-    );
+    const victimCallerIds = await repository.getCallerIDsWithStatus(id, ComponentStatus.VICTIM, tx);
 
     // For cases with cycles, perps might be calling the used-to-be-perp node too
-    const perpCallersResult = await repository.getPerpetratorChain(id, tx);
-    const perpCallerIds: string[] = perpCallersResult.records.map((r: Neo4jRecord) => r.get("n")?.properties.id);
+    const perpCallerIds = await repository.getPerpetratorIDsChain(id, tx);
 
     const otherChanges: Change[] = (
       await Promise.all(
@@ -196,9 +170,9 @@ function toMergedChangeDict(changes: Change[]): Dictionary<Change> {
 }
 
 async function setNewPerpetratorsAndVictims(id: string, tx: Transaction): Promise<Change[]> {
-  const chain = await findCausalChain(id, tx);
-  const abnormalSubgraph: Dictionary<Node> = chain.length === 0 ? {} : await toEntity(id, chain, tx);
+  const abnormalSubgraph = await getAbnormalSubgraph(id, tx);
   logger.debug("ABNORMAL SUBGRAPH: " + inspect(abnormalSubgraph, false, 3));
+
   const ends = findEnds(id, abnormalSubgraph);
   logger.debug("ENDS: " + inspect(ends, false, 3));
 
@@ -224,8 +198,8 @@ async function setNewPerpetratorsAndVictims(id: string, tx: Transaction): Promis
   return asChanges(newPerpetrators, ComponentStatus.PERPETRATOR).concat(asChanges(newVictims, ComponentStatus.VICTIM));
 }
 
-function updateStatuses(nodes: Node[], newStatus: ComponentStatus, tx?: Transaction): Promise<Result[]> {
-  return Promise.all(nodes.map((x: Node) => repository.setStatus(x.id, newStatus, tx)));
+async function updateStatuses(nodes: Node[], newStatus: ComponentStatus, tx?: Transaction): Promise<void> {
+  await Promise.all(nodes.map((x: Node) => repository.setStatus(x.id, newStatus, tx)));
 }
 
 function asChanges(nodes: Node[], newStatus: ComponentStatus): Change[] {
@@ -258,11 +232,17 @@ async function transact<T>(fn: (tx: Transaction) => Promise<T>): Promise<T> {
   }
 }
 
-async function toEntity(initialId: string, nodes: Node[], tx?: Transaction): Promise<Dictionary<Node>> {
+async function toGraph(
+  initialId: string,
+  nodes: { id: string; status: ComponentStatus }[],
+  tx?: Transaction
+): Promise<Dictionary<Node>> {
   const ids = [initialId, ...nodes.map((n: Node) => n.id)];
   const relationships = await repository.getDependenciesBetween(ids, tx);
-  const nodesById = keyBy(nodes, "id");
 
+  const nodesById = keyBy(nodes, "id") as Dictionary<Node>;
+  // At this point, `nodesBysId` are actually still missing the dependencies to really be Node elements
+  // So, go on to build those dependencies and depsSet
   for (const { callerId, calleeId } of relationships) {
     if (nodesById[callerId].dependencies) {
       nodesById[callerId].dependencies.push(calleeId);
@@ -419,12 +399,10 @@ function toSupernodeId(ids: string[]): string {
   return [SUPERNODE_PREFIX, ...ids].join(SUPERNODE_SEPARATOR);
 }
 
-export async function getFullGraph(): Promise<any> {
-  const resultNodeIds: string[] = (await repository.getFullGraph()).records.map(
-    (r: any) => r.get("resultNode")?.properties.id
+export async function getFullGraph(): Promise<Dictionary<Component & { dependencies: string[] }>> {
+  const ids = await repository.getAllIDs();
+  const components = (await Promise.all(ids.map((id: string) => repository.getComponent(id)))).map((c: Component) =>
+    Object.assign(c, { dependencies: Array.from(c.dependencies) })
   );
-  const components = (
-    await Promise.all(resultNodeIds.map((id: string) => repository.getComponent(id)))
-  ).map((c: Component) => Object.assign(c, { dependencies: Array.from(c.dependencies) }));
   return keyBy(components, "id");
 }
