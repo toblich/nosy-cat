@@ -24,7 +24,7 @@ const redlock = new Redlock([locksRedisClient], {});
 const bufferFields = {
   THROUGHPUT: "throughput",
   ERRORS: "errors",
-  TOTAL_uS: "total_us", // TODO this is actually in MICROseconds
+  TOTAL_uS: "total_us",
 };
 
 const metricFields = {
@@ -186,11 +186,11 @@ function aggregateBuffer(metrics: MetricsBuffer): ComponentMetrics {
 // --- Helper functions ---
 
 function deserializeTs(serialized: string): number {
-  return new Date(serialized).getTime(); // TODO change if serialization changes
+  return new Date(serialized).getTime(); // * change if serialization changes
 }
 
 function serializeTs(ts: number): string {
-  return new Date(ts).toISOString(); // TODO change to use epoch as serialization mechanism for better perf overall
+  return new Date(ts).toISOString(); // * change if de-serialization changes
 }
 
 function minuteFloor(timestamp: number): number {

@@ -224,8 +224,7 @@ export default class Repository {
     );
   }
 
-  public async getAbnormalChain(initialId: string, tx?: Transaction): Promise<any> {
-    // TODO types
+  public async getAbnormalChain(initialId: string, tx?: Transaction): Promise<NodeProperties[]> {
     const result = await this.run(
       `
         MATCH (caller:Component:Abnormal {id: $initialId})
