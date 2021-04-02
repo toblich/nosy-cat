@@ -41,5 +41,6 @@
     "*.{ts, js}": [
       "tslint -c ./tslint.json --fix"
     ]
-  }
+  },
+  "dependencies": {}
 }

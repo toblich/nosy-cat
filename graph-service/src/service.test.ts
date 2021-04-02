@@ -1,211 +1,549 @@
-import * as redisMock from "redis-mock";
-import { promisifyAll } from "bluebird";
-import { redis, ComponentStatus, ComponentPlainObject } from "helpers";
+import { ComponentStatus, Dictionary } from "helpers";
+import { merge } from "lodash";
+import * as neo4j from "neo4j-driver";
+import * as graphService from "./service";
 
-promisifyAll(redisMock.RedisClient.prototype);
-promisifyAll(redisMock.Multi.prototype);
+const defaultTestMetrics = Object.freeze({
+  duration: 1,
+  errored: true,
+  timestamp: Date.now(),
+});
 
-const mock = jest.spyOn(redis, "createClient").mockImplementation((...args: any) => redisMock.createClient(...args));
+const { CONFIRMED, PERPETRATOR, VICTIM, NORMAL, INITIALIZING } = ComponentStatus;
 
-import * as httpErrors from "http-errors";
-import { forEach, mapValues } from "lodash";
-import * as service from "./service";
+let _testCounter = 0; // This is just a hack so that Jest report does not bundle together things that shouldn't
 
-describe("service", () => {
-  beforeEach(service.clear);
-  beforeEach(() => mock.mockClear());
+describe("new tests", () => {
+  beforeAll(async () => {
+    await availableDb();
 
-  describe("a complete case", () => {
-    let toAdd;
-    let expected;
-
-    beforeEach(async () => {
-      toAdd = [
-        { caller: "Alice", callee: "Bob" },
-        { caller: "Carl" },
-        { callee: "David" },
-        { caller: "Alice", callee: "Eric" },
-        { caller: "Eric", callee: "Bob" }
-      ];
-
-      expected = mapValues(
-        {
-          Alice: { dependencies: ["Bob", "Eric"], consumers: [], status: ComponentStatus.NORMAL },
-          Bob: { dependencies: [], consumers: ["Alice", "Eric"], status: ComponentStatus.NORMAL },
-          Carl: { dependencies: [], consumers: [], status: ComponentStatus.NORMAL },
-          David: { dependencies: [], consumers: [], status: ComponentStatus.NORMAL },
-          Eric: { dependencies: ["Bob"], consumers: ["Alice"], status: ComponentStatus.NORMAL }
-        },
-        (component: any) =>
-          Object.assign(component, { metrics: { throughput: 0, meanResponseTimeMs: 0, errorRate: 0 } })
-      );
-
-      toAdd.forEach(async (componentCall: any) => await service.add(componentCall));
-    });
-
-    it("should deep equal the expected graph", async () => {
-      const result = await service.toPlainObject();
-      expect(result).toEqual(expected);
-    });
-  });
-
-  describe("#search", () => {
-    const existingId = "ExistingComponent";
-    const missingId = "MissingComponent";
-
-    beforeEach(() => {
-      service.add({ callee: existingId });
-    });
-
-    describe("when getting a component that does exist", () => {
-      it("should return the component", async () => {
-        const component = await service.search(existingId);
-        expect(component).toEqual({
-          id: existingId,
-          dependencies: [],
-          consumers: [],
-          status: ComponentStatus.NORMAL,
-          metrics: {
-            // all metrics will be empty because the test does not set any particular values
-            errorRate: 0,
-            meanResponseTimeMs: 0,
-            throughput: 0
-          }
-        });
-      });
-    });
-
-    describe("when trying to get a component that does not exist", () => {
-      it("should throw a NotFound error", async () => {
-        expect.assertions(1);
-        await expect(service.search(missingId)).rejects.toBeInstanceOf(httpErrors.NotFound);
-      });
-    });
-  });
-
-  describe("#findRootCauses", () => {
-    interface GraphPlainPartialObject {
-      graph: {
-        [id: string]: { dependencies?: string[]; status?: ComponentStatus };
-      };
+    try {
+      await graphService.clear();
+    } catch (error) {
+      throw Error("There was an error while clearing the DB");
     }
-    function findRootCauseTest(
-      initialId: string,
-      expected: string[] | httpErrors.HttpErrorConstructor,
-      state: GraphPlainPartialObject
-    ): void {
-      it("should yield the expected root causes", () => {
-        // test-case setup
-        forEach(state.graph, ({ dependencies, status }: ComponentPlainObject, id: string) => {
-          service.add({ callee: id }); // insert component even if there are no deps
-          service.updateComponentStatus(id, status || ComponentStatus.NORMAL); // set status
-          for (const depId of dependencies || []) {
-            // insert dependencies (if there are some)
-            service.add({ caller: id, callee: depId });
-          }
+  });
+
+  describe("when not using transition thresholds", () => {
+    beforeAll(() => {
+      graphService.setTransitioningThresholds({ [NORMAL]: 1, [CONFIRMED]: 1 });
+    });
+
+    describe("single-node graph (A)", () => {
+      initialize({ A: [] });
+      test("A", NORMAL, {});
+      test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+      test("A", CONFIRMED, {});
+      test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+    });
+
+    describe("two-node graph", () => {
+      describe("single call (A -> B)", () => {
+        const graph = Object.freeze({ A: ["B"] });
+
+        describe("applying changes only to A", () => {
+          initialize(graph);
+          test("A", NORMAL, {});
+          test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+          test("A", CONFIRMED, {});
+          test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
         });
 
-        if (Array.isArray(expected)) {
-          const rootIds = service
-            .findRootCauses(initialId)
-            .map((component: ComponentPlainObject) => component.id)
-            .sort();
-
-          expect(rootIds).toEqual(expected.sort());
-        } else {
-          expect(() => service.findRootCauses(initialId)).toThrowError(expected);
-        }
-      });
-    }
-
-    describe("when the initial component does not exist", () =>
-      findRootCauseTest("Z", httpErrors.NotFound, { graph: {} }));
-
-    describe("when the initial component exists and is healthy", () =>
-      findRootCauseTest("Alice", [], { graph: { Alice: {} } }));
-
-    describe("when the initial component exists and is anomalous", () => {
-      const state: any = {
-        graph: {}
-      };
-
-      beforeEach(() => {
-        state.graph = {
-          Alice: { status: ComponentStatus.CONFIRMED }
-        };
-      });
-
-      describe("and it has no dependencies", () => findRootCauseTest("Alice", ["Alice"], state));
-
-      describe("and it has all healthy dependencies", () => {
-        beforeEach(() => {
-          state.graph.Alice.dependencies = ["Bob", "Carl"];
+        describe("applying changes only to B", () => {
+          initialize(graph);
+          test("B", NORMAL, {});
+          test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
+          test("B", CONFIRMED, {});
+          test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
         });
 
-        findRootCauseTest("Alice", ["Alice"], state);
+        describe("applying changes to both", () => {
+          initialize(graph);
+          test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+          test("B", CONFIRMED, merge(change("B", NORMAL, PERPETRATOR), change("A", PERPETRATOR, VICTIM)));
+          // both CONFIRMED now
+
+          test("B", NORMAL, merge(change("B", PERPETRATOR, NORMAL), change("A", VICTIM, PERPETRATOR)));
+          test("B", CONFIRMED, merge(change("B", NORMAL, PERPETRATOR), change("A", PERPETRATOR, VICTIM)));
+          // both CONFIRMED now
+
+          test("A", NORMAL, change("A", VICTIM, NORMAL));
+        });
       });
 
-      describe("and it has some broken dependencies", () => {
-        beforeEach(() => {
-          state.graph = {
-            Alice: {
-              status: ComponentStatus.CONFIRMED,
-              dependencies: ["Bob", "Carl", "David"]
-            },
-            Bob: { status: ComponentStatus.CONFIRMED },
-            Carl: {},
-            David: { status: ComponentStatus.CONFIRMED }
-          };
+      describe("two-node cycle (A <-> B)", () => {
+        const graph = Object.freeze({ A: ["B"], B: ["A"] });
+
+        describe("applying changes only to one node", () => {
+          initialize(graph);
+          test("A", NORMAL, {});
+          test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+          test("A", CONFIRMED, {});
+          test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
         });
 
-        describe("and none of them have broken dependencies", () =>
-          findRootCauseTest("Alice", ["Bob", "David"], state));
+        describe("applying changes to both", () => {
+          initialize(graph);
+          test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+          test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
+          // both CONFIRMED now
 
-        describe("and some of them have broken dependencies", () => {
-          beforeEach(() => {
-            state.graph.Eric = { status: ComponentStatus.CONFIRMED };
-            state.graph.David.dependencies = ["Eric"];
-          });
-
-          findRootCauseTest("Alice", ["Bob", "Eric"], state);
-        });
-
-        describe("and there is a cycle in the anomalous chain", () => {
-          describe("with a hanging tail at the beginning", () => {
-            beforeEach(() => {
-              // B is the hanging tail off of A in the loop A - D - A
-              state.graph.David.dependencies = ["Alice"];
-            });
-
-            findRootCauseTest("Alice", ["Alice", "Bob", "David"], state);
-          });
-
-          describe("with a hanging tail in the middle", () => {
-            beforeEach(() => {
-              // F is a hanging tail off of D, the loop is A - D - E - A
-              state.graph.David.dependencies = ["Eric", "Fred"];
-              state.graph.Eric = {
-                status: ComponentStatus.CONFIRMED,
-                dependencies: ["Alice"]
-              };
-              state.graph.Fred = {
-                status: ComponentStatus.CONFIRMED
-              };
-            });
-
-            findRootCauseTest("Alice", ["Bob", "David", "Eric", "Alice", "Fred"], state);
-          });
-          describe("with a hanging tail at the end", () => {
-            beforeEach(() => {
-              // E is a hanging tail off of D in the loop A - D - A
-              state.graph.Eric = { status: ComponentStatus.CONFIRMED };
-              state.graph.David.dependencies = ["Eric", "Alice"];
-            });
-
-            findRootCauseTest("Alice", ["Bob", "David", "Eric", "Alice"], state);
-          });
+          test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
+          test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
         });
       });
     });
+
+    describe("three-node graph", () => {
+      // Case 3.1
+      describe("chain (A -> B -> C)", () => {
+        initialize({ A: ["B"], B: ["C"], C: [] });
+
+        // Test 3.1
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+        test("C", CONFIRMED, change("C", NORMAL, PERPETRATOR));
+        test("B", CONFIRMED, merge(change("A", PERPETRATOR, VICTIM), change("B", NORMAL, VICTIM)));
+
+        // Reciprocal
+        test("B", NORMAL, merge(change("A", VICTIM, PERPETRATOR), change("B", VICTIM, NORMAL)));
+      });
+
+      // Case 3.6
+      describe("loop with tail (A <- B <-> C)", () => {
+        initialize({ A: [], B: ["A", "C"], C: ["B"] });
+        test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
+        test("C", CONFIRMED, change("C", NORMAL, PERPETRATOR));
+
+        // Test 3.6.a
+        test(
+          "A",
+          CONFIRMED,
+          merge(change("A", NORMAL, PERPETRATOR), change("B", PERPETRATOR, VICTIM), change("C", PERPETRATOR, VICTIM))
+        );
+        // Test 3.6.b
+        test(
+          "A",
+          NORMAL,
+          merge(change("A", PERPETRATOR, NORMAL), change("B", VICTIM, PERPETRATOR), change("C", VICTIM, PERPETRATOR))
+        );
+      });
+
+      // Case 3.9
+      describe("8-shape loops (A <-> B <-> C)", () => {
+        initialize({ A: ["B"], B: ["A", "C"], C: ["B"] });
+        test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
+        test("C", CONFIRMED, change("C", NORMAL, PERPETRATOR));
+
+        // Test 3.9.a
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+        // Test 3.9.b
+        test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+
+        // Test 3.9.c
+        test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
+        // Test 3.9.d
+        test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
+      });
+
+      // Case 3.14
+      describe("single big loop (~ A <- B <- C <~)", () => {
+        initialize({ A: ["C"], B: ["A"], C: ["B"] });
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+        test("B", CONFIRMED, change("B", NORMAL, VICTIM));
+
+        // Test 3.14.a
+        test("C", CONFIRMED, merge(change("B", VICTIM, PERPETRATOR), change("C", NORMAL, PERPETRATOR)));
+
+        // Test 3.14.b
+        test("C", NORMAL, merge(change("B", PERPETRATOR, VICTIM), change("C", PERPETRATOR, NORMAL)));
+      });
+
+      // Case 3.15
+      describe("Cycle is part of bigger cycle A <- B <-> C ; A -> C", () => {
+        initialize({ A: ["C"], B: ["A", "C"], C: ["B"] });
+
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+        test("B", CONFIRMED, change("B", NORMAL, VICTIM));
+
+        // Test 3.15.a
+        test("C", CONFIRMED, merge(change("B", VICTIM, PERPETRATOR), change("C", NORMAL, PERPETRATOR)));
+
+        // Test 3.15.b
+        test("C", NORMAL, merge(change("B", PERPETRATOR, VICTIM), change("C", PERPETRATOR, NORMAL)));
+
+        test("A", NORMAL, merge(change("A", PERPETRATOR, NORMAL), change("B", VICTIM, PERPETRATOR)));
+        test("C", CONFIRMED, change("C", NORMAL, PERPETRATOR));
+
+        // Test 3.15.c
+        test("A", CONFIRMED, merge(change("A", NORMAL, PERPETRATOR)));
+
+        // Test 3.15.d
+        test("A", NORMAL, merge(change("A", PERPETRATOR, NORMAL)));
+
+        test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
+        test("A", CONFIRMED, change("A", NORMAL, VICTIM));
+
+        // Test 3.15.e
+        test("B", CONFIRMED, merge(change("A", VICTIM, PERPETRATOR), change("B", NORMAL, PERPETRATOR)));
+
+        // Test 3.15.f
+        test("B", NORMAL, merge(change("A", PERPETRATOR, VICTIM), change("B", PERPETRATOR, NORMAL)));
+      });
+
+      // Case 3.27
+      describe("3-complete graph", () => {
+        initialize({ A: ["B", "C"], B: ["A", "C"], C: ["A", "B"] });
+        test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
+        test("C", CONFIRMED, change("C", NORMAL, PERPETRATOR));
+
+        // Test 3.27.a
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+        // Test 3.27.b
+        test("A", NORMAL, change("A", PERPETRATOR, NORMAL));
+
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+
+        // Test 3.27.c
+        test("B", NORMAL, change("B", PERPETRATOR, NORMAL));
+        // Test 3.27.d
+        test("B", CONFIRMED, change("B", NORMAL, PERPETRATOR));
+      });
+    });
+
+    describe("Multi-node graph", () => {
+      // Case 4.1
+      describe("D depends on ring", () => {
+        initialize({ A: ["B"], B: ["C"], C: ["D"], D: ["E"], E: ["A"], F: ["A"] });
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+        test("B", CONFIRMED, merge(change("A", PERPETRATOR, VICTIM), change("B", NORMAL, PERPETRATOR)));
+        test("C", CONFIRMED, merge(change("B", PERPETRATOR, VICTIM), change("C", NORMAL, PERPETRATOR)));
+        test("D", CONFIRMED, merge(change("C", PERPETRATOR, VICTIM), change("D", NORMAL, PERPETRATOR)));
+        test(
+          "E",
+          CONFIRMED,
+          merge(
+            change("A", VICTIM, PERPETRATOR),
+            change("B", VICTIM, PERPETRATOR),
+            change("C", VICTIM, PERPETRATOR),
+            change("E", NORMAL, PERPETRATOR)
+          )
+        );
+
+        // Case 4.1.a
+        test("F", CONFIRMED, merge(change("F", NORMAL, VICTIM)));
+
+        // Case 4.1.b
+        test("F", NORMAL, merge(change("F", VICTIM, NORMAL)));
+      });
+
+      // Case 4.2
+      describe("Ring depends on F", () => {
+        initialize({ A: ["B", "F"], B: ["C"], C: ["D"], D: ["E"], E: ["A"], F: [] });
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+        test("B", CONFIRMED, merge(change("A", PERPETRATOR, VICTIM), change("B", NORMAL, PERPETRATOR)));
+        test("C", CONFIRMED, merge(change("B", PERPETRATOR, VICTIM), change("C", NORMAL, PERPETRATOR)));
+        test("D", CONFIRMED, merge(change("C", PERPETRATOR, VICTIM), change("D", NORMAL, PERPETRATOR)));
+        test(
+          "E",
+          CONFIRMED,
+          merge(
+            change("A", VICTIM, PERPETRATOR),
+            change("B", VICTIM, PERPETRATOR),
+            change("C", VICTIM, PERPETRATOR),
+            change("E", NORMAL, PERPETRATOR)
+          )
+        );
+
+        // Case 4.2.a
+        test(
+          "F",
+          CONFIRMED,
+          merge(
+            change("A", PERPETRATOR, VICTIM),
+            change("B", PERPETRATOR, VICTIM),
+            change("C", PERPETRATOR, VICTIM),
+            change("D", PERPETRATOR, VICTIM),
+            change("E", PERPETRATOR, VICTIM),
+            change("F", NORMAL, PERPETRATOR)
+          )
+        );
+
+        // Case 4.2.b
+        test(
+          "F",
+          NORMAL,
+          merge(
+            change("A", VICTIM, PERPETRATOR),
+            change("B", VICTIM, PERPETRATOR),
+            change("C", VICTIM, PERPETRATOR),
+            change("D", VICTIM, PERPETRATOR),
+            change("E", VICTIM, PERPETRATOR),
+            change("F", PERPETRATOR, NORMAL)
+          )
+        );
+
+        test(
+          "F",
+          CONFIRMED,
+          merge(
+            change("A", PERPETRATOR, VICTIM),
+            change("B", PERPETRATOR, VICTIM),
+            change("C", PERPETRATOR, VICTIM),
+            change("D", PERPETRATOR, VICTIM),
+            change("E", PERPETRATOR, VICTIM),
+            change("F", NORMAL, PERPETRATOR)
+          )
+        );
+
+        // Case 4.2.c
+        test("A", NORMAL, merge(change("A", VICTIM, NORMAL), change("E", VICTIM, PERPETRATOR)));
+
+        // Case 4.2.d
+        test("A", CONFIRMED, merge(change("A", NORMAL, VICTIM), change("E", PERPETRATOR, VICTIM)));
+      });
+
+      // Case 4.3
+      describe("Two rings with a shared chain (loop A through F + loop EHIJBCDE [BCDE exist in both loops])", () => {
+        initialize({
+          A: ["B"],
+          B: ["C"],
+          C: ["D"],
+          D: ["E"],
+          E: ["F", "H"],
+          F: ["G"],
+          G: ["A"],
+          H: ["I"],
+          I: ["J"],
+          J: ["B"],
+        });
+
+        // Setting first loop as abnormal (A through F)
+        test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR));
+        test("B", CONFIRMED, merge(change("A", PERPETRATOR, VICTIM), change("B", NORMAL, PERPETRATOR)));
+        test("C", CONFIRMED, merge(change("B", PERPETRATOR, VICTIM), change("C", NORMAL, PERPETRATOR)));
+        test("D", CONFIRMED, merge(change("C", PERPETRATOR, VICTIM), change("D", NORMAL, PERPETRATOR)));
+        test("E", CONFIRMED, merge(change("D", PERPETRATOR, VICTIM), change("E", NORMAL, PERPETRATOR)));
+        test("F", CONFIRMED, merge(change("E", PERPETRATOR, VICTIM), change("F", NORMAL, PERPETRATOR)));
+        test(
+          "G",
+          CONFIRMED,
+          merge(
+            change("A", VICTIM, PERPETRATOR),
+            change("B", VICTIM, PERPETRATOR),
+            change("C", VICTIM, PERPETRATOR),
+            change("D", VICTIM, PERPETRATOR),
+            change("E", VICTIM, PERPETRATOR),
+            change("G", NORMAL, PERPETRATOR)
+          )
+        );
+
+        // Setting the other loop as abnormal except H
+        test("I", CONFIRMED, change("I", NORMAL, PERPETRATOR));
+        test("J", CONFIRMED, merge(change("I", PERPETRATOR, VICTIM), change("J", NORMAL, VICTIM)));
+
+        // Test 4.3.a
+        test(
+          "H",
+          CONFIRMED,
+          merge(change("H", NORMAL, PERPETRATOR), change("I", VICTIM, PERPETRATOR), change("J", VICTIM, PERPETRATOR))
+        );
+
+        // Test 4.3.b
+        test(
+          "H",
+          NORMAL,
+          merge(change("H", PERPETRATOR, NORMAL), change("I", PERPETRATOR, VICTIM), change("J", PERPETRATOR, VICTIM))
+        );
+
+        test(
+          "H",
+          CONFIRMED,
+          merge(change("H", NORMAL, PERPETRATOR), change("I", VICTIM, PERPETRATOR), change("J", VICTIM, PERPETRATOR))
+        );
+
+        // Test 4.3.c
+        test(
+          "B",
+          NORMAL,
+          merge(
+            change("B", PERPETRATOR, NORMAL),
+            change("C", PERPETRATOR, VICTIM),
+            change("D", PERPETRATOR, VICTIM),
+            change("E", PERPETRATOR, VICTIM),
+            change("F", PERPETRATOR, VICTIM),
+            change("G", PERPETRATOR, VICTIM),
+            change("H", PERPETRATOR, VICTIM),
+            change("I", PERPETRATOR, VICTIM)
+          )
+        );
+        // Test 4.3.d
+        test(
+          "B",
+          CONFIRMED,
+          merge(
+            change("B", NORMAL, PERPETRATOR),
+            change("C", VICTIM, PERPETRATOR),
+            change("D", VICTIM, PERPETRATOR),
+            change("E", VICTIM, PERPETRATOR),
+            change("F", VICTIM, PERPETRATOR),
+            change("G", VICTIM, PERPETRATOR),
+            change("H", VICTIM, PERPETRATOR),
+            change("I", VICTIM, PERPETRATOR)
+          )
+        );
+
+        // Test 4.3.e
+        test(
+          "D",
+          NORMAL,
+          merge(
+            change("D", PERPETRATOR, NORMAL),
+            change("A", PERPETRATOR, VICTIM),
+            change("B", PERPETRATOR, VICTIM),
+            change("E", PERPETRATOR, VICTIM),
+            change("F", PERPETRATOR, VICTIM),
+            change("G", PERPETRATOR, VICTIM),
+            change("H", PERPETRATOR, VICTIM),
+            change("I", PERPETRATOR, VICTIM),
+            change("J", PERPETRATOR, VICTIM)
+          )
+        );
+
+        // Test 4.3.f
+        test(
+          "D",
+          CONFIRMED,
+          merge(
+            change("D", NORMAL, PERPETRATOR),
+            change("A", VICTIM, PERPETRATOR),
+            change("B", VICTIM, PERPETRATOR),
+            change("E", VICTIM, PERPETRATOR),
+            change("F", VICTIM, PERPETRATOR),
+            change("G", VICTIM, PERPETRATOR),
+            change("H", VICTIM, PERPETRATOR),
+            change("I", VICTIM, PERPETRATOR),
+            change("J", VICTIM, PERPETRATOR)
+          )
+        );
+      });
+    });
   });
+
+  describe("when using transition thresholds", () => {
+    beforeAll(() => {
+      graphService.setTransitioningThresholds({ [NORMAL]: 3, [CONFIRMED]: 3 });
+    });
+
+    describe("single-node graph (A) with initializing state", () => {
+      initialize({ A: [] }, false);
+      test("A", NORMAL, {});
+      test("A", CONFIRMED, {});
+      test("A", NORMAL, {});
+      test("A", NORMAL, {});
+      test("A", NORMAL, {});
+      test("A", CONFIRMED, change("A", INITIALIZING, NORMAL));
+    });
+
+    describe("single-node graph (A)", () => {
+      initialize({ A: [] });
+      test("A", NORMAL, {}); // Counter 0
+      test("A", CONFIRMED, {}); // Counter 1
+      test("A", NORMAL, {}); // Counter 0
+      test("A", CONFIRMED, {}); // Counter 1
+      test("A", CONFIRMED, {}); // Counter 2
+      test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR)); // Counter 3 --> 0
+      test("A", CONFIRMED, {}); // Counter 0
+      test("A", NORMAL, {}); // Counter 1
+      test("A", CONFIRMED, {}); // Counter 0
+      test("A", CONFIRMED, {}); // Counter 0
+      test("A", NORMAL, {}); // Counter 1
+      test("A", NORMAL, {}); // Counter 1
+      test("A", NORMAL, change("A", PERPETRATOR, NORMAL)); // Counter 3 --> 0
+    });
+
+    describe("single-call graph (A -> B)", () => {
+      initialize({ A: ["B"], B: [] });
+      test("A", CONFIRMED, {}); // Counter A 1
+      test("A", CONFIRMED, {}); // Counter A 2
+      test("B", CONFIRMED, {}); // Counter B 1
+      test("A", CONFIRMED, change("A", NORMAL, PERPETRATOR)); // Counter A 3 --> 0
+      test("B", CONFIRMED, {}); // Counter B 2
+      test("B", CONFIRMED, merge(change("A", PERPETRATOR, VICTIM), change("B", NORMAL, PERPETRATOR))); // Counter B 3 --> 0
+      test("B", NORMAL, {}); // Counter B 1
+      test("A", NORMAL, {}); // Counter A 1
+      test("A", NORMAL, {}); // Counter A 2
+      test("B", NORMAL, {}); // Counter B 2
+      test("B", NORMAL, merge(change("A", VICTIM, PERPETRATOR), change("B", PERPETRATOR, NORMAL))); // Counter B 3 --> 0
+      test("A", NORMAL, change("A", PERPETRATOR, NORMAL)); // Counter A 3 --> 0
+    });
+  });
+
+  // ---
+
+  function initialize(graph: Dictionary<string[]>, isServiceReady: boolean = true): void {
+    _testCounter = 0;
+    beforeAll(async () => {
+      await graphService.clear();
+      const componentCalls = Object.entries(graph).flatMap(([caller, callees]: [string, string[]]) => {
+        return !callees || callees.length === 0
+          ? { callee: caller, metrics: defaultTestMetrics }
+          : callees.map((callee: string) => ({ caller, callee, metrics: defaultTestMetrics }));
+      });
+      try {
+        await graphService.add([...componentCalls], isServiceReady);
+      } catch (error) {
+        throw Error(`There was an error while adding the component calls, ${error.stack}`);
+      }
+    });
+  }
+
+  function test(
+    id: string,
+    status: ComponentStatus,
+    expectedChanges: Dictionary<graphService.Change>,
+    debug?: boolean
+  ): void {
+    describe(`[${++_testCounter}] and ${id} becomes ${status}`, () => {
+      let changes;
+      beforeAll(async () => (changes = await graphService.updateComponentStatus(id, status)));
+      it(`should return the expected changes`, () => {
+        expect(changes).toEqual(expectedChanges);
+      });
+    });
+  }
+
+  function change(id: string, fromStatus: ComponentStatus, toStatus: ComponentStatus): Dictionary<graphService.Change> {
+    return {
+      [id]: {
+        id,
+        from: { status: fromStatus },
+        to: { status: toStatus },
+      },
+    };
+  }
+
+  function timeout(ms: number): Promise<void> {
+    return new Promise((resolve: (...props: any[]) => any): any => setTimeout(resolve, ms));
+  }
+
+  async function availableDb(): Promise<void> {
+    if (!process.env.NEO4J_HOST) {
+      throw new Error("NEO4J_HOST unspecified");
+    }
+    const driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic("neo4j", "bitnami"));
+    const session = driver.session();
+    let isAlive = false;
+    while (!isAlive) {
+      try {
+        await session.run("Return date() as currentDate");
+        isAlive = true;
+      } catch (e) {
+        await timeout(500);
+      }
+    }
+    await session.close();
+    await driver.close();
+  }
 });

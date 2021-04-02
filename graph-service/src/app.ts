@@ -1,14 +1,9 @@
-import { Server } from "http";
 import * as express from "express";
-import * as socketio from "socket.io";
-import * as path from "path";
-
-import { logger, createZipkinContextTracer, createZipkinExpress } from "helpers";
+import { createZipkinContextTracer, createZipkinExpress, logger } from "helpers";
+import { Server } from "http";
 import { mapValues } from "lodash";
-
 import * as controller from "./controller";
 import * as middlewares from "./middlewares";
-
 import Repository from "./repository";
 
 const { tracer } = createZipkinContextTracer("graph-service");
@@ -42,7 +37,7 @@ const wrappedController: Controller = mapValues(controller, (originalMethod: exp
 });
 
 ////////////////////
-// Create express, server, and socketio
+// Create express, server
 ////////////////////
 const app: express.Application = createZipkinExpress(tracer);
 const port = process.env.PORT || 4000;
@@ -53,43 +48,21 @@ app.use("/", (req, res, next) => {
   next();
 });
 const http = new Server(app);
-const io = socketio(http);
 
 ////////////////////
 // Set express routes
 ////////////////////
 app.use(middlewares.logging);
 
-app.post("/graph", wrappedController.addComponentsAndDependencies, emitGraph);
+app.post("/graph", wrappedController.addComponentsAndDependencies);
 app.get("/graph", wrappedController.getGraphAsJson);
-app.delete("/graph", wrappedController.resetGraph, emitGraph);
-app.get("/ui", wrappedController.getGraphAsNodesAndEdges);
+app.delete("/graph", wrappedController.resetGraph);
 app.post("/graph/search", wrappedController.searchComponent);
-app.patch("/graph/components/status", wrappedController.updateComponentStatus, emitGraph);
-app.post("/graph/root-causes", wrappedController.findRootCauses);
-
-// This endpoint is just to get a test page of the WebSocket
-app.get("/ws", (_: any, res: any) => {
-  res.sendFile(path.resolve("./src/ws-test.html"));
-});
+app.patch("/graph/components/status", wrappedController.updateComponentStatus);
 
 app.use(middlewares.globalErrorHandling);
-
-////////////////////
-// Set some SocketIO stuff on connection, mainly for debugging
-////////////////////
-io.on("connection", async () => {
-  logger.info("New WebSocket connection opened");
-  await emitGraph();
-});
 
 ////////////////////
 // Actually start the server
 ////////////////////
 const server = http.listen(port, () => logger.info(`Graph listening on port ${port}`));
-
-async function emitGraph(): Promise<void> {
-  const graph = await controller.wsGraphAsNodesAndEdges();
-  logger.info("Emitting graph");
-  io.sockets.emit("graph", graph);
-}
