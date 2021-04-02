@@ -50,6 +50,7 @@ services:
       - kafka
     command: *base-kafka-command
     environment: *base-environment
+    restart: always
     networks:
       - nosy-cat
       - default
@@ -71,6 +72,7 @@ services:
       - graph-service
       - kafka
     environment: *base-environment
+    restart: always
     networks:
       - default
 
@@ -99,6 +101,8 @@ services:
       TIME_UNIT_IN_MS: 10000
       USE_INFLUX: "true"
       INFLUX_URL: http://influxdb:8086
+      LOG_LEVEL: info
+    restart: always
     networks:
       - default
 
@@ -120,6 +124,7 @@ services:
       - kafka
     environment:
       <<: *base-environment
+    restart: always
     networks:
       - default
 
@@ -146,6 +151,7 @@ services:
       <<: *base-environment
       NEO4J_HOST: neo4j://neo4j:7687
       NEO4J_STATUS: http://neo4j:7474
+    restart: always
     networks:
       - default
 
@@ -167,13 +173,11 @@ services:
       # Advertise domain instead of ip so that calls from other containers and the host machine do a different
       # dns resolution (docker container ip  for other containers, localhost for browser as the ports are exposed)
       NEO4J_HOST: "neo4j"
+    restart: always
+    volumes:
+      - "neo4jstorage:/bitname"
     networks:
       - default
-
-  browser-proxy:
-    image: nginx:1.17
-    ports:
-      - "80:80"
 
   pagerduty-integration:
     build:
@@ -188,6 +192,7 @@ services:
       - "./pagerduty-integration/tsconfig.json:/project/app/tsconfig.json"
       - "./pagerduty-integration/src:/project/app/src"
     command: *base-kafka-command
+    restart: always
     depends_on:
       - kafka
     environment:
@@ -197,6 +202,7 @@ services:
 
   zookeeper:
     image: wurstmeister/zookeeper
+    restart: always
     expose:
       - "2181"
     networks:
@@ -215,6 +221,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_BROKER_ID: 1
+    restart: always
     networks:
       - default
 
@@ -245,15 +252,6 @@ services:
     networks:
       - default
 
-  redis-insight:
-    image: redislabs/redisinsight
-    ports:
-      - "8001:8001"
-    depends_on:
-      - redis
-    networks:
-      - default
-
   influxdb:
     image: influxdb:2.0
     environment:
@@ -266,6 +264,8 @@ services:
       - *influx-token-volume
       - "./influxdb/setup.sh:/docker-entrypoint-initdb.d/setup.sh"
       - "./influxdb/template.yml:/home/influxdb/template.yml"
+      # - "influxdbstorage:/var/lib/influxdb2"
+    restart: always
     ports:
       - "8086:8086"
     depends_on:
@@ -293,3 +293,5 @@ networks:
 
 volumes:
   influxdbtoken:
+  influxdbstorage:
+  neo4jstorage:

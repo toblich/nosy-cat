@@ -34,7 +34,7 @@ const logger = winston.createLogger({
     winston.format.printf((info: winston.LogEntry) => `${info.timestamp} - ${info.level}: ${info.message}`)
   ),
   transports: [new winston.transports.Console()],
-  level: process.env.NODE_ENV === "test" ? "error" : "silly",
+  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === "test" ? "error" : "silly"),
 });
 
 // logger.error("hello");
