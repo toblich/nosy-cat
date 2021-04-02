@@ -65,14 +65,6 @@ async function onEachMessage(producer: Producer, args: any): Promise<void> {
 
   try {
     await graphClient.postComponentCalls(componentCalls);
-    // await producer.send({
-    //   topic: "dependency-detector",
-    //   messages: [
-    //     {
-    //       value: JSON.stringify(componentCalls)
-    //     }
-    //   ]
-    // });
   } catch (error) {
     logger.error(error);
   }
