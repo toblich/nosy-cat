@@ -21,7 +21,7 @@ export interface Node {
 const repository = new Repository();
 
 const DEFAULT_TRANSITIONING_THRESHOLD = 3;
-export const DEFAULT_INITIALIZING_THRESHOLD = 5;
+export const DEFAULT_INITIALIZING_THRESHOLD = 30;
 
 type Thresholds = Record<ComponentStatus.NORMAL | ComponentStatus.CONFIRMED, number>;
 let _thresholds: Thresholds = {
