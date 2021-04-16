@@ -8,7 +8,8 @@ const INGRESS_PORT = process.env.INGRESS_PORT;
 if (!INGRESS_HOST || !INGRESS_PORT) {
   throw Error("Missing ingress host values");
 }
-const zipkinBaseUrl = `http://${INGRESS_HOST}:${INGRESS_PORT}`;
+// const zipkinBaseUrl = `http://${INGRESS_HOST}:${INGRESS_PORT}`;
+const zipkinBaseUrl = `http://nosy-cat.tk:${INGRESS_PORT}`;
 
 // tslint:disable-next-line:no-var-requires
 const EventEmitter = require("events").EventEmitter;
@@ -32,7 +33,7 @@ class MyLogger extends EventEmitter {
 
     this.headers = Object.assign(
       {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       headers
     );
@@ -76,7 +77,7 @@ class MyLogger extends EventEmitter {
         method: "POST",
         body: postBody,
         headers: self.headers,
-        timeout: self.timeout
+        timeout: self.timeout,
       })
         .then((response: { status: number; body: any }): void => {
           if (response.status !== 202 && response.status !== 200) {
@@ -111,6 +112,6 @@ class MyLogger extends EventEmitter {
 export default new BatchRecorder({
   logger: new MyLogger({
     endpoint: `${zipkinBaseUrl}/api/v2/spans`,
-    jsonEncoder: JSONEncoder.JSON_V2
-  })
+    jsonEncoder: JSONEncoder.JSON_V2,
+  }),
 });
