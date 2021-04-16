@@ -3,14 +3,14 @@ import { logger } from "helpers";
 
 // tslint:disable-next-line: typedef
 export function logging(req, res, next) {
-  logger.debug(`${coerceReqTrace(req)} => ${coerceReqDetails(req)}`);
+  // logger.debug(`${coerceReqTrace(req)} => ${coerceReqDetails(req)}`);
   req._startTime = Date.now();
 
   const originalSend = res.send;
   res.send = (body: any): express.Response => {
     if (res.statusCode < 400) {
       const duration = Date.now() - res.req._startTime;
-      logger.debug(`${coerceReqTrace(res.req)} <= ${res.statusCode} after ${duration}ms with ${toJSON(body)}`);
+      // logger.debug(`${coerceReqTrace(res.req)} <= ${res.statusCode} after ${duration}ms with ${toJSON(body)}`);
     }
     return originalSend.call(res, body);
   };
@@ -22,7 +22,7 @@ export function logging(req, res, next) {
 export function globalErrorHandling(err, req, res, _) {
   const status = err.status || 500;
 
-  logger.error(`${coerceReqTrace(req)} ${err.stack}`);
+  // logger.error(`${coerceReqTrace(req)} ${err.stack}`);
 
   res.status(status).json({
     status,

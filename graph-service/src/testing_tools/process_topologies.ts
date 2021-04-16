@@ -1,5 +1,5 @@
 // @ts-nocheck
-import graphService = require("./service");
+import graphService = require("../service");
 import fs = require("fs");
 import { util } from "prettier";
 import { inspect } from "util";
