@@ -33,8 +33,8 @@ describe("EWMA helpers", () => {
 
       // tslint:disable-next-line:prefer-for-of
       for (let index = 0; index < values.length; index++) {
-        lastEWMA = EWMA(values[index], lastEWMA);
-        lastEWMASquare = EWMA(Math.pow(values[index], 2), lastEWMASquare);
+        lastEWMA = EWMA(values[index], lastEWMA, 0.1);
+        lastEWMASquare = EWMA(Math.pow(values[index], 2), lastEWMASquare, 0.1);
       }
 
       result = EWMAStdDeviation(lastEWMASquare, lastEWMA);

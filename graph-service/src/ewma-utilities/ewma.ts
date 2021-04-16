@@ -1,4 +1,4 @@
-export const GAMMA = 0.1;
+export const GAMMA = 0.0003;
 
 /**
  * Calculates the EWMA at a time T, given the EWMA value at time T - 1 and the measure at time T
@@ -7,8 +7,8 @@ export const GAMMA = 0.1;
  * @param Yt - Measure at time T
  * @param previousEWMA - EWMA at time T - 1
  */
-export function EWMA(Yt: number, previousEWMA: number): number {
-  return GAMMA * Yt + previousEWMA * (1 - GAMMA);
+export function EWMA(Yt: number, previousEWMA: number, gamma: number = GAMMA): number {
+  return gamma * Yt + previousEWMA * (1 - gamma);
 }
 
 /**
