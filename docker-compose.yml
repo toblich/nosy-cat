@@ -95,8 +95,8 @@ services:
       - influxdb
     environment:
       <<: *base-environment
-      INFLUX_FLUSH_INTERVAL_MS: 10000
-      TIME_UNIT_IN_MS: 10000
+      INFLUX_FLUSH_INTERVAL_MS: 2000
+      TIME_UNIT_IN_MS: 2000
       USE_INFLUX: "true"
       INFLUX_URL: http://influxdb:8086
     networks:
