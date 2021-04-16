@@ -21,12 +21,13 @@ export interface Node {
 const repository = new Repository();
 
 const DEFAULT_TRANSITIONING_THRESHOLD = 3;
-export const DEFAULT_INITIALIZING_THRESHOLD = 30;
+const DEFAULT_INITIALIZING_THRESHOLD = 30;
 
-type Thresholds = Record<ComponentStatus.NORMAL | ComponentStatus.CONFIRMED, number>;
+type Thresholds = Record<ComponentStatus.NORMAL | ComponentStatus.CONFIRMED | ComponentStatus.INITIALIZING, number>;
 let _thresholds: Thresholds = {
   [ComponentStatus.NORMAL]: DEFAULT_TRANSITIONING_THRESHOLD,
   [ComponentStatus.CONFIRMED]: DEFAULT_TRANSITIONING_THRESHOLD,
+  [ComponentStatus.INITIALIZING]: DEFAULT_INITIALIZING_THRESHOLD,
 };
 export function setTransitioningThresholds(thresholds: Thresholds): void {
   _thresholds = thresholds;
@@ -73,11 +74,14 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
 
     const updatedCounter = transitionCounter + 1;
 
-    if (currentStatus === ComponentStatus.INITIALIZING && transitionCounter < DEFAULT_INITIALIZING_THRESHOLD) {
+    if (
+      currentStatus === ComponentStatus.INITIALIZING &&
+      transitionCounter < _thresholds[ComponentStatus.INITIALIZING]
+    ) {
       logger.debug(`Incrementing transitionCounter to ${updatedCounter} for ${id}`);
       await repository.setTransitionCounter(id, updatedCounter, tx);
       return {}; // There was no status change
-    } else if (transitionCounter === DEFAULT_INITIALIZING_THRESHOLD) {
+    } else if (transitionCounter === _thresholds[ComponentStatus.INITIALIZING]) {
       logger.debug(`Set status normal for the ex new node: ${id}`);
       await repository.setStatus(id, ComponentStatus.NORMAL, tx, { resetCounter: true });
       return {
