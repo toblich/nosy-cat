@@ -18,8 +18,8 @@
           <boolProp name="LoopController.continue_forever">false</boolProp>
           <stringProp name="LoopController.loops">300</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">10</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">30</stringProp>
+        <stringProp name="ThreadGroup.num_threads">25</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">5</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
         <stringProp name="ThreadGroup.duration"></stringProp>
         <stringProp name="ThreadGroup.delay"></stringProp>
@@ -62,8 +62,8 @@
           </HTTPSamplerProxy>
           <hashTree>
             <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Uniform Random Timer" enabled="true">
-              <stringProp name="ConstantTimer.delay">1000.0</stringProp>
-              <stringProp name="RandomTimer.range">10000.0</stringProp>
+              <stringProp name="ConstantTimer.delay">100.0</stringProp>
+              <stringProp name="RandomTimer.range">500.0</stringProp>
             </UniformRandomTimer>
             <hashTree/>
           </hashTree>
@@ -95,8 +95,8 @@
           </HTTPSamplerProxy>
           <hashTree>
             <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Uniform Random Timer" enabled="true">
-              <stringProp name="ConstantTimer.delay">1000.0</stringProp>
-              <stringProp name="RandomTimer.range">10000.0</stringProp>
+              <stringProp name="ConstantTimer.delay">100.0</stringProp>
+              <stringProp name="RandomTimer.range">500.0</stringProp>
             </UniformRandomTimer>
             <hashTree/>
           </hashTree>
