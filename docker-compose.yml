@@ -25,7 +25,7 @@ x-base-environment: &base-environment
   DOCKER_INFLUXDB_INIT_ORG: nosy-cat
   DOCKER_INFLUXDB_INIT_BUCKET: default
   INFLUX_TOKEN_FILEPATH: &influx-token-filepath /mnt/compose_volume/influxdb-token.json
-  ACCEPTED_STD_DEVIATIONS: 3
+  ACCEPTED_STD_DEVIATIONS: 2
 
 ############
 # SERVICES #
@@ -102,7 +102,7 @@ services:
       USE_INFLUX: "true"
       INFLUX_URL: http://influxdb:8086
       LOG_LEVEL: info
-      GAMMA: 0.01
+      GAMMA: 0.005
       FIRST_EWMA_SQUARE_MULTIPLIER: 1
     restart: always
     networks:
