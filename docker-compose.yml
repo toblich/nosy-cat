@@ -103,7 +103,6 @@ services:
       INFLUX_URL: http://influxdb:8086
       LOG_LEVEL: info
       GAMMA: 0.005
-      FIRST_EWMA_SQUARE_MULTIPLIER: 1
     restart: always
     networks:
       - default
