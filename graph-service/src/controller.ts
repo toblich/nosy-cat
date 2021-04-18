@@ -26,7 +26,7 @@ export async function updateComponentStatus(req: UpdateComponentStatusReq, res: 
   res.status(200).json(changes);
 }
 
-export async function resetGraph(res: Response): Promise<void> {
+export async function resetGraph(_: EmptyReq, res: Response): Promise<void> {
   await service.clear();
   res.status(204).send();
 }
