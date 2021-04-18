@@ -1,5 +1,3 @@
-export const GAMMA = 0.0003;
-
 /**
  * Calculates the EWMA at a time T, given the EWMA value at time T - 1 and the measure at time T
  * Formula based on https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc324.htm
@@ -7,8 +5,8 @@ export const GAMMA = 0.0003;
  * @param Yt - Measure at time T
  * @param previousEWMA - EWMA at time T - 1
  */
-export function EWMA(Yt: number, previousEWMA: number): number {
-  return GAMMA * Yt + previousEWMA * (1 - GAMMA);
+export function EWMA(Yt: number, previousEWMA: number, gamma: number = 0.0003): number {
+  return gamma * Yt + previousEWMA * (1 - gamma);
 }
 
 /**
