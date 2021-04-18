@@ -26,7 +26,7 @@ describe("new tests", () => {
 
   describe("when not using transition thresholds", () => {
     beforeAll(() => {
-      graphService.setTransitioningThresholds({ [NORMAL]: 1, [CONFIRMED]: 1 });
+      graphService.setTransitioningThresholds({ [NORMAL]: 1, [CONFIRMED]: 1, [INITIALIZING]: -1 });
     });
 
     describe("single-node graph (A)", () => {
@@ -433,15 +433,13 @@ describe("new tests", () => {
 
   describe("when using transition thresholds", () => {
     beforeAll(() => {
-      graphService.setTransitioningThresholds({ [NORMAL]: 3, [CONFIRMED]: 3 });
+      graphService.setTransitioningThresholds({ [NORMAL]: 3, [CONFIRMED]: 3, [INITIALIZING]: 3 });
     });
 
     describe("single-node graph (A) with initializing state", () => {
       initialize({ A: [] }, false);
       test("A", NORMAL, {});
       test("A", CONFIRMED, {});
-      test("A", NORMAL, {});
-      test("A", NORMAL, {});
       test("A", NORMAL, {});
       test("A", CONFIRMED, change("A", INITIALIZING, NORMAL));
     });

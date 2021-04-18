@@ -11,7 +11,8 @@
     "start:prod": "node ./build/app.js",
     "test:local": "NEO4J_HOST=neo4j://neo4j:7687 npm run test",
     "test": "npm run build-helpers && npm run build && npm run test:unit",
-    "test:unit": "jest --forceExit --detectOpenHandles --coverage --verbose"
+    "test:unit": "jest --forceExit --detectOpenHandles --coverage --verbose",
+    "test:watch": "jest --watch"
   },
   "author": "",
   "license": "BSD-3-Clause",
