@@ -175,7 +175,7 @@ services:
       NEO4J_HOST: "neo4j"
     restart: always
     volumes:
-      - "neo4jstorage:/bitname"
+      - "neo4jstorage:/bitnami"
     networks:
       - default
 
