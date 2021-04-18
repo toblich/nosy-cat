@@ -125,6 +125,7 @@ async function updateEWMAs(component: string, ts: number): Promise<HistoricMetri
   ).map(toComponentMetric);
 
   const multi = ewmaRedisClient.multi();
+  const hadValue = !!(ewmas && ewmas.throughput);
 
   for (const field of Object.values(metricFields)) {
     const currentMeasure = metrics[field];
@@ -132,7 +133,7 @@ async function updateEWMAs(component: string, ts: number): Promise<HistoricMetri
     const newEWMA = updateEWMA(currentMeasure, ewmas, field);
     multi.hset(ewmaKey, field, "" + newEWMA);
 
-    const newEWMASquare = updateEWMA(currentMeasure * currentMeasure, ewmaSquares, field);
+    const newEWMASquare = updateEWMA(currentMeasure * currentMeasure * (hadValue ? 1 : 100000), ewmaSquares, field);
     multi.hset(ewmaSquaresKey, field, "" + newEWMASquare);
   }
   multi.expire(ewmaKey, TTL_EWMAS);
@@ -160,7 +161,7 @@ async function updateEWMAs(component: string, ts: number): Promise<HistoricMetri
       name: field,
       latest: +metrics[field],
       historicAvg: avg,
-      historicStdDev: EWMAStdDeviation(+ewmaSquares[field] || avg * avg, avg),
+      historicStdDev: EWMAStdDeviation(+ewmaSquares[field] || avg * avg * 100000, avg),
     };
   });
 }
@@ -169,9 +170,9 @@ function updateEWMA(currentMeasure: number, ewmas: ComponentMetrics, field: stri
   // initialize at current measure (when there's no previous EWMA)
   const currentEWMA = ewmas && ewmas[field] ? +ewmas[field] : currentMeasure;
   logger.debug(
-    `currentEWMA: ${currentEWMA}, EWMA result: ${EWMA(currentEWMA, currentMeasure)}, currentMeasure: ${currentMeasure}`
+    `currentEWMA: ${currentEWMA}, EWMA result: ${EWMA(currentMeasure, currentEWMA)}, currentMeasure: ${currentMeasure}`
   );
-  const newEWMA = EWMA(currentEWMA, currentMeasure);
+  const newEWMA = EWMA(currentMeasure, currentEWMA);
   return newEWMA;
 }
 

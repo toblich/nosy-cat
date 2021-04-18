@@ -102,7 +102,7 @@ services:
       USE_INFLUX: "true"
       INFLUX_URL: http://influxdb:8086
       LOG_LEVEL: info
-      GAMMA: 0.0003
+      GAMMA: 0.01
     restart: always
     networks:
       - default
