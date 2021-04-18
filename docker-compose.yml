@@ -170,11 +170,6 @@ services:
     networks:
       - default
 
-  browser-proxy:
-    image: nginx:1.17
-    ports:
-      - "80:80"
-
   pagerduty-integration:
     build:
       <<: *base-build
@@ -242,15 +237,6 @@ services:
     depends_on:
       - redis
     command: redis-cli -h redis
-    networks:
-      - default
-
-  redis-insight:
-    image: redislabs/redisinsight
-    ports:
-      - "8001:8001"
-    depends_on:
-      - redis
     networks:
       - default
 
