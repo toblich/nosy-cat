@@ -169,9 +169,9 @@ function updateEWMA(currentMeasure: number, ewmas: ComponentMetrics, field: stri
   // initialize at current measure (when there's no previous EWMA)
   const currentEWMA = ewmas && ewmas[field] ? +ewmas[field] : currentMeasure;
   logger.debug(
-    `currentEWMA: ${currentEWMA}, EWMA result: ${EWMA(currentEWMA, currentMeasure)}, currentMeasure: ${currentMeasure}`
+    `currentEWMA: ${currentEWMA}, EWMA result: ${EWMA(currentMeasure, currentEWMA)}, currentMeasure: ${currentMeasure}`
   );
-  const newEWMA = EWMA(currentEWMA, currentMeasure);
+  const newEWMA = EWMA(currentMeasure, currentEWMA);
   return newEWMA;
 }
 
