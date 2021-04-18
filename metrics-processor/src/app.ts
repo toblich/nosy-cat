@@ -15,7 +15,7 @@ consume(tracer, "ingress", onEachMessage);
 // ---
 
 async function processSpan(span: ZipkinSpan): Promise<ComponentHistoricMetrics | null> {
-  logger.info(`processing span ${JSON.stringify(span, null, 4)}`);
+  logger.debug(`processing span ${JSON.stringify(span, null, 4)}`);
   const errored = hasErrored(span);
   const remoteEndpointName = (span.remoteEndpoint && span.remoteEndpoint.serviceName) || undefined;
   const localEndpointName = (span.localEndpoint && span.localEndpoint.serviceName) || undefined;

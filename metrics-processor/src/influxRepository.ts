@@ -26,7 +26,7 @@ class InfluxRepository implements MetricsRepository {
         logger.error(`There was an error writing to Influx: ${error.stack}`);
       },
       writeSuccess: (lines: string[]) => {
-        logger.debug(`Successfully wrote ${lines.length} lines to Influx :)`);
+        logger.info(`Successfully wrote ${lines.length} lines to Influx :)`);
       },
       flushInterval: parseInt(process.env.INFLUX_FLUSH_INTERVAL_MS || "60000", 10),
     });
