@@ -6,6 +6,7 @@ import { EWMA, EWMAStdDeviation } from "./ewma";
 import { inspect } from "util";
 
 const MIN_IN_MS = parseInt(process.env.TIME_UNIT_IN_MS || "60000", 10);
+const FIRST_EWMA_SQUARE_MULTIPLIER = parseInt(process.env.FIRST_EWMA_SQUARE_MULTIPLIER || "100000", 10);
 const DELIM = ":";
 const TTL_BUFFER = 60 * 10; // 10 mins
 const TTL_LOCKS = 1000; // in ms, as this is for redlock and not plain redis
@@ -133,7 +134,11 @@ async function updateEWMAs(component: string, ts: number): Promise<HistoricMetri
     const newEWMA = updateEWMA(currentMeasure, ewmas, field);
     multi.hset(ewmaKey, field, "" + newEWMA);
 
-    const newEWMASquare = updateEWMA(currentMeasure * currentMeasure * (hadValue ? 1 : 100000), ewmaSquares, field);
+    const newEWMASquare = updateEWMA(
+      currentMeasure * currentMeasure * (hadValue ? 1 : FIRST_EWMA_SQUARE_MULTIPLIER),
+      ewmaSquares,
+      field
+    );
     multi.hset(ewmaSquaresKey, field, "" + newEWMASquare);
   }
   multi.expire(ewmaKey, TTL_EWMAS);
@@ -161,7 +166,7 @@ async function updateEWMAs(component: string, ts: number): Promise<HistoricMetri
       name: field,
       latest: +metrics[field],
       historicAvg: avg,
-      historicStdDev: EWMAStdDeviation(+ewmaSquares[field] || avg * avg * 100000, avg),
+      historicStdDev: EWMAStdDeviation(+ewmaSquares[field] || avg * avg * FIRST_EWMA_SQUARE_MULTIPLIER, avg),
     };
   });
 }
