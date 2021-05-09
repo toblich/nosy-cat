@@ -17,6 +17,11 @@ spec:
   values:
     - xapi
     - iam
+    - inventory
+    - billing
+    - payments
+    - redis
+    - postgres
 ---
 apiVersion: influxdata.com/v2alpha1
 kind: Dashboard
@@ -56,8 +61,7 @@ spec:
               |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
               |> filter(fn: (r) => r["component"] == v.component)
               |> filter(fn: (r) => r["_measurement"] == "throughput")
-              |> filter(fn: (r) => r["_field"] == "observed" or r["_field"] == "upperThreshold" or r["_field"] == "lowerThreshold")
-              |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)
+              |> filter(fn: (r) => r["_field"] == "observed" or r["_field"] == "upperThreshold" or r["_field"] == "lowerThreshold" or r["_field"] == "historicAvg")
               |> yield(name: "last")
       width: 12
       xCol: _time
@@ -95,8 +99,7 @@ spec:
               |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
               |> filter(fn: (r) => r["component"] == v.component)
               |> filter(fn: (r) => r["_measurement"] == "errorRate")
-              |> filter(fn: (r) => r["_field"] == "observed" or r["_field"] == "upperThreshold" or r["_field"] == "lowerThreshold")
-              |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)
+              |> filter(fn: (r) => r["_field"] == "observed" or r["_field"] == "upperThreshold" or r["_field"] == "lowerThreshold" or r["_field"] == "historicAvg")
               |> yield(name: "last")
       width: 12
       xCol: _time
@@ -135,8 +138,7 @@ spec:
               |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
               |> filter(fn: (r) => r["component"] == v.component)
               |> filter(fn: (r) => r["_measurement"] == "meanResponseTimeMs")
-              |> filter(fn: (r) => r["_field"] == "observed" or r["_field"] == "upperThreshold" or r["_field"] == "lowerThreshold")
-              |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)
+              |> filter(fn: (r) => r["_field"] == "observed" or r["_field"] == "upperThreshold" or r["_field"] == "lowerThreshold" or r["_field"] == "historicAvg")
               |> yield(name: "last")
       width: 12
       xCol: _time
