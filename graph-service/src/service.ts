@@ -81,7 +81,10 @@ export async function updateComponentStatus(id: string, newStatus: ComponentStat
       logger.debug(`Incrementing transitionCounter to ${updatedCounter} for ${id}`);
       await repository.setTransitionCounter(id, updatedCounter, tx);
       return {}; // There was no status change
-    } else if (transitionCounter === _thresholds[ComponentStatus.INITIALIZING]) {
+    } else if (
+      currentStatus === ComponentStatus.INITIALIZING &&
+      transitionCounter === _thresholds[ComponentStatus.INITIALIZING]
+    ) {
       logger.debug(`Set status normal for the ex new node: ${id}`);
       await repository.setStatus(id, ComponentStatus.NORMAL, tx, { resetCounter: true });
       return {
