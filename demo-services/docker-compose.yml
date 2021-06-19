@@ -1,8 +1,8 @@
 version: "3.7"
 
 x-base-environment: &base-environment
-  INGRESS_HOST: host.docker.internal
-  INGRESS_PORT: 3000
+  INGRESS_HOST: ${NC_HOST:-host.docker.internal}
+  INGRESS_PORT: ${NC_PORT:-3000}
 
 x-base-service: &base-service
   build:
@@ -60,3 +60,12 @@ services:
     image: postgres:11
     environment:
       POSTGRES_HOST_AUTH_METHOD: trust
+
+  jmeter:
+    image: justb4/jmeter
+    volumes:
+      - "./jmeter-plan.jmx:/plan.jmx"
+    command: -n -t /plan.jmx -l /results.jtl
+    depends_on:
+      - xapi
+    # entrypoint: /bin/bash
