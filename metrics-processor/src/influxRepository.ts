@@ -37,7 +37,14 @@ class InfluxRepository implements MetricsRepository {
     if (!process.env.INFLUX_TOKEN_FILEPATH) {
       throw new Error("The path for the file with the influx token is unspecified.");
     }
-    const tokenFile = require(process.env.INFLUX_TOKEN_FILEPATH);
+
+    let tokenFile;
+    try {
+      tokenFile = require(process.env.INFLUX_TOKEN_FILEPATH);
+    } catch {
+      logger.warn(`There was an error requiring the influx token file (${process.env.INFLUX_TOKEN_FILEPATH})`);
+    }
+
     if (tokenFile && tokenFile.influx) {
       logger.info("Successfully got influx token");
       return tokenFile.influx;
