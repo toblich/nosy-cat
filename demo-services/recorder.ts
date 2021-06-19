@@ -64,8 +64,6 @@ class MyLogger extends EventEmitter {
   // tslint:disable-next-line:typedef
   public logSpan(span): void {
     this.queue.push(this.jsonEncoder.encode(span));
-    // tslint:disable-next-line:no-console
-    console.log("span", span);
   }
 
   public processQueue(): Promise<void> {
