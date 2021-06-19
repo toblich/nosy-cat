@@ -1,11 +1,8 @@
 version: "3.7"
 
 x-base-environment: &base-environment
-  INGRESS_HOST: ingress
+  INGRESS_HOST: host.docker.internal
   INGRESS_PORT: 3000
-
-x-base-networks: &base-networks
-  - nosy-cat_nosy-cat
 
 x-base-service: &base-service
   build:
@@ -17,7 +14,6 @@ x-base-service: &base-service
     - "./recorder.ts:/project/app/recorder.ts"
     - "./server.ts:/project/app/server.ts"
     - "./servicesFetch.ts:/project/app/servicesFetch.ts"
-  networks: *base-networks
 
 services:
   xapi:
@@ -59,14 +55,8 @@ services:
 
   redis:
     image: redis
-    networks: *base-networks
 
   postgres:
     image: postgres:11
-    networks: *base-networks
     environment:
       POSTGRES_HOST_AUTH_METHOD: trust
-
-networks:
-  nosy-cat_nosy-cat:
-    external: true

@@ -51,9 +51,6 @@ services:
     command: *base-kafka-command
     environment: *base-environment
     restart: always
-    networks:
-      - nosy-cat
-      - default
 
   dependency-detector:
     build:
@@ -73,8 +70,6 @@ services:
       - kafka
     environment: *base-environment
     restart: always
-    networks:
-      - default
 
   metrics-processor:
     build:
@@ -104,8 +99,6 @@ services:
       LOG_LEVEL: info
       GAMMA: 0.005
     restart: always
-    networks:
-      - default
 
   anomaly-detector:
     build:
@@ -126,8 +119,6 @@ services:
     environment:
       <<: *base-environment
     restart: always
-    networks:
-      - default
 
   graph-service:
     build:
@@ -153,10 +144,8 @@ services:
       NEO4J_HOST: neo4j://neo4j:7687
       NEO4J_STATUS: http://neo4j:7474
       TRANSITIONING_THRESHOLD: 3
-      INITIALIZING_THRESHOLD: 30
+      INITIALIZING_THRESHOLD: 1
     restart: always
-    networks:
-      - default
 
   neo4j:
     image: bitnami/neo4j:4.1.3
@@ -179,8 +168,6 @@ services:
     restart: always
     volumes:
       - "neo4jstorage:/bitnami"
-    networks:
-      - default
 
   pagerduty-integration:
     build:
@@ -200,16 +187,12 @@ services:
       - kafka
     environment:
       <<: *base-environment
-    networks:
-      - default
 
   zookeeper:
     image: wurstmeister/zookeeper
     restart: always
     expose:
       - "2181"
-    networks:
-      - default
 
   kafka:
     image: wurstmeister/kafka
@@ -225,8 +208,6 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_BROKER_ID: 1
     restart: always
-    networks:
-      - default
 
   kowl:
     image: quay.io/cloudhut/kowl:v1.1.0
@@ -237,23 +218,17 @@ services:
     entrypoint: ./kowl --config.filepath=/etc/kowl/config.yaml
     depends_on:
       - kafka
-    networks:
-      - default
 
   redis:
     image: redis
     ports:
       - 6379:6379
-    networks:
-      - default
 
   redis-cli:
     image: redis
     depends_on:
       - redis
     command: redis-cli -h redis
-    networks:
-      - default
 
   influxdb:
     image: influxdb:2.0
@@ -273,8 +248,6 @@ services:
       - "8086:8086"
     depends_on:
       - volume_init
-    networks:
-      - default
 
   volume_init:
     # This service is just a hack to make the named volume not just root-only.
@@ -287,12 +260,6 @@ services:
     restart: "no"
     volumes:
       - *influx-token-volume
-
-networks:
-  nosy-cat:
-    driver: bridge
-  default:
-    driver: bridge
 
 volumes:
   influxdbtoken:
