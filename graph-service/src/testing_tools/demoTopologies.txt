@@ -1,0 +1,5 @@
+1) A -> B
+2) B -> C -> D -> E -> C
+3) B -> C -> D -> E -> C ; E -> F
+
+!1) nginx -> api -> iam -> ldap ; iam -> iam-db ; iam -> iam-cache ; api -> api-db ; api -> api-cache ; api -> configs-svc ; api -> orchestrator -> builder ; orchestrator -> repository ; builder -> secrets-db ; orchestrator -> publisher -> secrets-db ; orchestrator -> iam ; publisher -> paas ; nginx -> iam ; nginx -> xapi -> iam ; xapi -> project-db ; xapi -> packager ; xapi -> modules-svc ; xapi -> runtime-svc -> publisher ; xapi -> configs-svc ; nginx -> ui -> api ; orchestrator -> aws ; runtime-svc -> aws ; builder -> iam ; repository -> iam ; api <-> repository ; nginx -> graphql -> repository ; api -> graphql ; graphql -> iam ; nginx -> projects-ui -> xapi ; api -> parser ; nginx -> proxy ; metrics -> queue ; api -> queue ; metrics -> metrics-db ; metrics-api -> metrics-db ; design-ui -> design-api -> iam ; design-api -> fsv ; design-api -> iam
