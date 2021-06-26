@@ -8,7 +8,7 @@ x-base-build: &base-build
   dockerfile: service.dockerfile
 
 x-base-command: &base-command sh -c "npm run start:dockerized"
-x-base-kafka-command: &base-kafka-command sh -c "./wait-for-it.sh $$KAFKA -t 30 -- npm run start:dockerized"
+x-base-kafka-command: &base-kafka-command sh -c "./wait-for-it.sh $$KAFKA -t 120 -- npm run start:dockerized"
 
 x-influx-token-volume: &influx-token-volume
   type: volume
@@ -135,7 +135,7 @@ services:
       - "./graph-service/tsconfig.json:/project/app/tsconfig.json"
       - "./graph-service/jest.config.js:/project/app/jest.config.js"
       - "./graph-service/src:/project/app/src"
-    command: sh -c "./wait-for-it.sh $$NEO4J_STATUS -t 30 -- npm run start:dockerized"
+    command: sh -c "./wait-for-it.sh $$NEO4J_STATUS -t 120 -- npm run start:dockerized"
     depends_on:
       - redis
       - neo4j
