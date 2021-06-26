@@ -70,7 +70,7 @@ spec:
         - base: "10"
           name: x
           scale: linear
-        - base: "10"
+        - base: "2"
           name: y
           scale: linear
           suffix: "%"
