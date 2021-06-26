@@ -1,5 +1,6 @@
-import { InfluxDB, Point, WriteApi } from "@influxdata/influxdb-client";
+import { InfluxDB, Point, WriteApi, setLogger } from "@influxdata/influxdb-client";
 import { ComponentHistoricMetrics, HistoricMetric, logger } from "helpers";
+import { threadId } from "worker_threads";
 
 const ACCEPTED_STD_DEVIATIONS = parseInt(process.env.ACCEPTED_STD_DEVIATIONS, 10);
 
@@ -12,18 +13,29 @@ class InfluxRepository implements MetricsRepository {
   private buffer: ComponentHistoricMetrics[];
 
   constructor() {
-    this.buffer = [];
+    setLogger(logger);
     this.initialize();
   }
 
   private async initialize(): Promise<void> {
+    this.influxWriter = null;
+    this.buffer = [];
+
     const token = await this.fetchToken();
+
     this.influxWriter = new InfluxDB({
       url: process.env.INFLUX_URL,
       token,
     }).getWriteApi("nosy-cat", "default", "ms", {
       writeFailed: (error: Error, lines: string[], attempt: number) => {
         logger.error(`There was an error writing to Influx: ${error.stack}`);
+        if (attempt > 2) {
+          // Assume that the error could be related to the token or the connection.
+          // Re-initialize without losing the data.
+          // It's important that this is done async and we do not return a Promise
+          // (https://github.com/influxdata/influxdb-client-js/blob/7fa92f1603b47576d84010d32b712481633ccf61/packages/core/src/options.ts#L47-L50)
+          this.initialize().then(() => this.influxWriter.writeRecords(lines));
+        }
       },
       writeSuccess: (lines: string[]) => {
         logger.info(`Successfully wrote ${lines.length} lines to Influx :)`);
