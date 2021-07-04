@@ -1,6 +1,5 @@
 import { InfluxDB, Point, WriteApi, setLogger } from "@influxdata/influxdb-client";
 import { ComponentHistoricMetrics, HistoricMetric, logger } from "helpers";
-import { threadId } from "worker_threads";
 
 const ACCEPTED_STD_DEVIATIONS = parseInt(process.env.ACCEPTED_STD_DEVIATIONS, 10);
 

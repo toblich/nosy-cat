@@ -184,7 +184,7 @@ function aggregateBuffer(metrics: MetricsBuffer): ComponentMetrics {
   return {
     throughput: +metrics[bufferFields.THROUGHPUT],
     meanResponseTimeMs: metrics[bufferFields.TOTAL_uS] / metrics[bufferFields.THROUGHPUT],
-    errorRate: metrics[bufferFields.ERRORS] / metrics[bufferFields.THROUGHPUT],
+    errorRate: (metrics[bufferFields.ERRORS] / metrics[bufferFields.THROUGHPUT]) * 100, // Error rate in scale 0-100
   };
 }
 
