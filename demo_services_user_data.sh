@@ -1,5 +1,32 @@
 #!/bin/bash
 
+# Update DNS record
+HOSTED_ZONE_ID='Z04348901LY77KHP2FYDP'
+RECORD_NAME='demo-services.nosy-cat.tk'
+PUBLIC_IP=`curl http://169.254.169.254/latest/meta-data/public-ipv4`
+FILENAME='change.json'
+echo "
+{
+  \"Comment\": \"Upsert $RECORD_NAME ip\",
+  \"Changes\": [
+    {
+      \"Action\": \"UPSERT\",
+      \"ResourceRecordSet\": {
+        \"Name\": \"$RECORD_NAME\",
+        \"Type\": \"A\",
+        \"TTL\": 60,
+        \"ResourceRecords\": [
+          {
+            \"Value\": \"$PUBLIC_IP\"
+          }
+        ]
+      }
+    }
+  ]
+}
+" > $FILENAME
+aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file://$FILENAME
+
 # Install Docker
 yum update -y
 amazon-linux-extras install docker
